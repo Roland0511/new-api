@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -40,9 +41,46 @@ const openAIDecisionsResponse = `{"model":"gpt-6-luna","answers":[{"name":null,"
 const jevDecisionsResponse = `{"model":"jev-1.13.0","answers":{"blue":{"type":"noul","noul":0.9}},"usage":{"input_tokens":1000,"output_tokens":20},"future_field":{"kept":true}}`
 
 func TestDecisionsOpenRouterEndpointAndExplicitPrice(t *testing.T) {
-	assert.Contains(t, common.GetEndpointTypesByChannelType(constant.ChannelTypeOpenRouter, "typesafe/jev-1.13"), constant.EndpointTypeJEVDecisions)
+	for _, name := range []string{"typesafe/jev-1.13", "typesafe/jev-1.13-20260917", "~typesafe/jev-latest"} {
+		assert.Equal(t, []constant.EndpointType{constant.EndpointTypeJEVDecisions}, common.GetEndpointTypesByChannelType(constant.ChannelTypeOpenRouter, name), "decision-only models must not advertise chat prices")
+	}
+	for _, name := range []string{"typesafe/jev-router", "openai/gpt-6-luna"} {
+		assert.Equal(t, []constant.EndpointType{constant.EndpointTypeOpenAI}, common.GetEndpointTypesByChannelType(constant.ChannelTypeOpenRouter, name), "ordinary OpenRouter chat stays unchanged")
+	}
 	_, priced := billing_setting.GetEndpointBillingExpr(types.EndpointTypeJEVDecisions, "jev-latest")
 	assert.False(t, priced, "direct-provider prices must not become OpenRouter defaults")
+}
+
+func TestDecisionsOpenRouterAutomaticChannelTest(t *testing.T) {
+	require.NoError(t, i18n.Init())
+	service.InitHttpClient()
+	service.InitTokenEncoders()
+	db := modelManagementDB(t, "sqlite", "")
+	user := model.User{Username: "jev_test_user", AffCode: "jev_test_code", Group: "default", Status: common.UserStatusEnabled, Role: common.RoleRootUser}
+	require.NoError(t, db.Create(&user).Error)
+	previous := config.GlobalConfig.ExportAllConfigs()[billing_setting.EndpointBillingExprOption]
+	config.UpdateConfigFromMap(config.GlobalConfig.Get("billing_setting"), map[string]string{"endpoint_billing_expr": `{"jev-decisions::typesafe/jev-1.13":"tier(\"standard\", p * 0.042 + c * 0)"}`})
+	t.Cleanup(func() {
+		config.UpdateConfigFromMap(config.GlobalConfig.Get("billing_setting"), map[string]string{"endpoint_billing_expr": previous})
+	})
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		assert.Equal(t, "/api/alpha/decisions", r.URL.Path)
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		request, err := dto.ParseDecisionsRequest(body)
+		require.NoError(t, err)
+		assert.IsType(t, &dto.JEVDecisionsRequest{}, request)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, jevDecisionsResponse)
+	}))
+	defer server.Close()
+	channel := &model.Channel{Type: constant.ChannelTypeOpenRouter, Name: "OpenRouter JEV", Key: "test-only-key", BaseURL: common.GetPointer(server.URL + "/api"), Models: "typesafe/jev-1.13", Group: "default", Status: common.ChannelStatusEnabled, AutoBan: common.GetPointer(0)}
+	result := testChannel(context.Background(), channel, user.Id, "", "", false)
+	require.NoError(t, result.localErr)
+	require.Nil(t, result.newAPIError)
+	assert.EqualValues(t, 1, calls.Load())
 }
 
 func TestDecisionsNativeValidation(t *testing.T) {

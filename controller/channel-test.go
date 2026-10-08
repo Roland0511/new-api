@@ -110,6 +110,12 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 	}
 
 	endpointType = normalizeChannelTestEndpoint(channel, endpointType)
+	if endpointType == "" && channel.Type == constant.ChannelTypeOpenRouter {
+		endpoints := common.GetEndpointTypesByChannelType(channel.Type, testModel)
+		if len(endpoints) == 1 && endpoints[0] == constant.EndpointTypeJEVDecisions {
+			endpointType = string(constant.EndpointTypeJEVDecisions)
+		}
+	}
 	if isStream && (constant.EndpointType(endpointType) == constant.EndpointTypeOpenAIDecisions || constant.EndpointType(endpointType) == constant.EndpointTypeJEVDecisions) {
 		return testResult{localErr: errors.New("Decisions channel tests do not support streaming")}
 	}

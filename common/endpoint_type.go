@@ -28,10 +28,12 @@ func GetEndpointTypesByChannelType(channelType int, modelName string) []constant
 		fallthrough
 	case constant.ChannelTypeGemini:
 		endpointTypes = []constant.EndpointType{constant.EndpointTypeGemini, constant.EndpointTypeOpenAI}
-	case constant.ChannelTypeOpenRouter: // OpenRouter 只支持 OpenAI 端点
+	case constant.ChannelTypeOpenRouter:
 		endpointTypes = []constant.EndpointType{constant.EndpointTypeOpenAI}
-		if strings.HasPrefix(modelName, "typesafe/jev-") || strings.HasPrefix(modelName, "~typesafe/jev-") {
-			endpointTypes = append(endpointTypes, constant.EndpointTypeJEVDecisions)
+		if modelName != "typesafe/jev-router" && (strings.HasPrefix(modelName, "typesafe/jev-") || strings.HasPrefix(modelName, "~typesafe/jev-")) {
+			// Native decision models produce judgments, not chat completions.
+			// The separate Jev Router is a chat router and keeps its old endpoint.
+			return []constant.EndpointType{constant.EndpointTypeJEVDecisions}
 		}
 	case constant.ChannelTypeXai:
 		endpointTypes = []constant.EndpointType{constant.EndpointTypeOpenAI, constant.EndpointTypeOpenAIResponse}
