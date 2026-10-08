@@ -196,7 +196,10 @@ import {
   supportsChannelPluginExtensions,
   supportsNewAPIUpstream,
 } from '../../lib/channel-plugin-extensions'
-import { getChannelTypeConfig } from '../../lib/channel-type-config'
+import {
+  getChannelTypeConfig,
+  getRelatedChannelModels,
+} from '../../lib/channel-type-config'
 import {
   collectInvalidStatusCodeEntries,
   collectNewDisallowedStatusCodeRedirects,
@@ -721,16 +724,10 @@ export function ChannelMutateDrawer({
   )
 
   // Get basic models for the current channel type
-  const basicModels = useMemo(() => {
-    if (!allModelsList.length) return []
-    // Filter models based on common patterns for specific types
-    if (currentType === 1) {
-      return allModelsList.filter(
-        (model) => model.startsWith('gpt-') || model.startsWith('text-')
-      )
-    }
-    return allModelsList
-  }, [allModelsList, currentType])
+  const basicModels = useMemo(
+    () => getRelatedChannelModels(currentType, allModelsList),
+    [allModelsList, currentType]
+  )
 
   // Get prefill groups
   const prefillGroups = useMemo(

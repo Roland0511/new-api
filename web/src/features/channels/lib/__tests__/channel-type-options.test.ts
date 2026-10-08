@@ -24,7 +24,10 @@ import {
   CHANNEL_TYPE_TYPESAFE,
   channelTypeOptionsForTaskPluginBind,
 } from '../../constants'
-import { CHANNEL_TYPE_CONFIGS } from '../channel-type-config'
+import {
+  CHANNEL_TYPE_CONFIGS,
+  getRelatedChannelModels,
+} from '../channel-type-config'
 import { getChannelTypeIcon } from '../channel-utils'
 
 test('TypeSafe keeps its native model presets and vendor identity', () => {
@@ -35,6 +38,24 @@ test('TypeSafe keeps its native model presets and vendor identity', () => {
     'jev-preview',
     'jev-1.13.0',
   ])
+  expect(
+    getRelatedChannelModels(CHANNEL_TYPE_TYPESAFE, [
+      'gpt-6-luna',
+      'text-embedding-3-small',
+    ])
+  ).toEqual(['jev-latest', 'jev-preview', 'jev-1.13.0'])
+  expect(getRelatedChannelModels(CHANNEL_TYPE_TYPESAFE, [])).toEqual([
+    'jev-latest',
+    'jev-preview',
+    'jev-1.13.0',
+  ])
+  expect(
+    getRelatedChannelModels(1, [
+      'gpt-6-luna',
+      'text-embedding-3-small',
+      'jev-latest',
+    ])
+  ).toEqual(['gpt-6-luna', 'text-embedding-3-small'])
 })
 
 describe('channel type options for task plugin bind', () => {

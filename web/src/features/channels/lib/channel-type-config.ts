@@ -194,8 +194,24 @@ export const CHANNEL_TYPE_CONFIGS: Record<number, ChannelTypeConfig> = {
 }
 
 /**
- * Get configuration for a channel type
+ * Keep native-only channel presets separate from the general model catalog.
  */
+export function getRelatedChannelModels(
+  type: number,
+  allModels: string[]
+): string[] {
+  if (type === CHANNEL_TYPE_TYPESAFE) {
+    return [...(CHANNEL_TYPE_CONFIGS[type].supportedModels ?? [])]
+  }
+  if (type === 1) {
+    return allModels.filter(
+      (model) => model.startsWith('gpt-') || model.startsWith('text-')
+    )
+  }
+  return allModels
+}
+
+/** Get configuration for a channel type. */
 export function getChannelTypeConfig(type: number): ChannelTypeConfig {
   return (
     CHANNEL_TYPE_CONFIGS[type] || {
