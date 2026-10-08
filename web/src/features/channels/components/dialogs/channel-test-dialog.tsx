@@ -176,6 +176,8 @@ const endpointTypeOptions: Array<{ value: string; label: string }> = [
   { value: 'auto', label: 'Auto detect (default)' },
   { value: 'openai', label: 'OpenAI (/v1/chat/completions)' },
   { value: 'openai-response', label: 'OpenAI Responses (/v1/responses)' },
+  { value: 'openai-decisions', label: 'OpenAI Decisions (/v1/decisions)' },
+  { value: 'jev-decisions', label: 'JEV Decisions (/v1/decisions)' },
   {
     value: 'openai-response-compact',
     label: 'OpenAI Response Compaction (/v1/responses/compact)',
@@ -198,6 +200,8 @@ const STREAM_INCOMPATIBLE_ENDPOINTS = new Set([
   'image-generation',
   'jina-rerank',
   'openai-response-compact',
+  'openai-decisions',
+  'jev-decisions',
 ])
 
 const MODEL_PRICE_ERROR_CODE = 'model_price_error'
@@ -405,7 +409,9 @@ function ChannelTestDialogContent({
     setPagination({ pageIndex: 0, pageSize: 30 })
   }, [])
 
-  const streamDisabled = STREAM_INCOMPATIBLE_ENDPOINTS.has(endpointType)
+  const streamDisabled =
+    STREAM_INCOMPATIBLE_ENDPOINTS.has(endpointType) ||
+    (endpointType === 'auto' && currentRow.type === 64)
   const effectiveStreamTest = !streamDisabled && isStreamTest
 
   const handleEndpointTypeChange = useCallback((value: string | null) => {

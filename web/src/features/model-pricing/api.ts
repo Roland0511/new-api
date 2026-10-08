@@ -62,11 +62,19 @@ export type ModelPricingPluginVariant = {
 }
 
 export type ModelPricingEntry = ModelPricingDescription & {
+  endpoint_variants?: ModelPricingEndpointVariant[]
   plugin_variants?: ModelPricingPluginVariant[]
   model_name: string
   version: string
   configured: PricingValues
   usage_schema?: BillingUsageSchema
+}
+
+export type ModelPricingEndpointVariant = {
+  endpoint_type: string
+  configured: string
+  effective: string
+  builtin?: string
 }
 
 export type ModelPricingConfig = {
@@ -188,7 +196,8 @@ export function buildPricingChanges(
     const oldValues = previous.get(name) ?? {}
     const newValues = next.get(name) ?? {}
     const dirty = PRICING_KEYS.filter((key) =>
-      key === 'billing_setting.plugin_billing_expr'
+      key === 'billing_setting.plugin_billing_expr' ||
+      key === 'billing_setting.endpoint_billing_expr'
         ? !pluginExpressionsEqual(oldValues[key], newValues[key])
         : oldValues[key] !== newValues[key]
     )
@@ -199,6 +208,8 @@ export function buildPricingChanges(
       delete pricing[key]
       if (newValues[key] !== undefined) {
         Object.assign(pricing, { [key]: newValues[key] })
+      } else if (key === 'billing_setting.endpoint_billing_expr') {
+        pricing[key] = {}
       }
     }
     if (newValues['billing_setting.billing_mode'] === 'tiered_expr') {

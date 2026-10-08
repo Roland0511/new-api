@@ -69,6 +69,12 @@ func HandleGroupRatio(ctx *gin.Context, relayInfo *relaycommon.RelayInfo) hostty
 }
 
 func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens int, meta *types.TokenCountMeta) (hosttypes.PriceData, error) {
+	if info != nil && billing_setting.DecisionsEndpoint(info.RelayFormat) != "" {
+		// Client model is the pricing identity. Do not resolve Responses aliases
+		// or legacy ratio entries for a native Decisions request.
+		info.BillingModelName = info.OriginModelName
+		return modelPriceHelperTiered(c, info, info.OriginModelName, promptTokens, HandleGroupRatio(c, info))
+	}
 	if info != nil {
 		if matched := resolveBillingModelName(info.GetOriginModelName()); matched != "" && matched != info.OriginModelName {
 			info.BillingModelName = matched
@@ -341,6 +347,9 @@ func resolveBillingModelName(origin string) string {
 
 func modelPriceHelperTiered(c *gin.Context, info *relaycommon.RelayInfo, billingModelName string, promptTokens int, groupRatioInfo hosttypes.GroupRatioInfo) (hosttypes.PriceData, error) {
 	exprStr, ok := billing_setting.GetBillingExpr(billingModelName)
+	if endpoint := billing_setting.DecisionsEndpoint(info.RelayFormat); endpoint != "" {
+		exprStr, ok = billing_setting.GetEndpointBillingExpr(endpoint, billingModelName)
+	}
 	if !ok {
 		return hosttypes.PriceData{}, fmt.Errorf("model %s is configured as tiered_expr but has no billing expression", billingModelName)
 	}

@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { type TFunction } from 'i18next'
+import type { TFunction } from 'i18next'
 
 import type { TokenUnit } from './types'
 
@@ -71,6 +71,8 @@ export const ENDPOINT_TYPES = {
   ALL: 'all',
   OPENAI: 'openai',
   OPENAI_RESPONSE: 'openai-response',
+  OPENAI_DECISIONS: 'openai-decisions',
+  JEV_DECISIONS: 'jev-decisions',
   ANTHROPIC: 'anthropic',
   GEMINI: 'gemini',
   JINA_RERANK: 'jina-rerank',
@@ -90,6 +92,8 @@ export function getEndpointTypeLabels(
     [ENDPOINT_TYPES.ALL]: t('All Types'),
     [ENDPOINT_TYPES.OPENAI]: 'Chat',
     [ENDPOINT_TYPES.OPENAI_RESPONSE]: 'Response',
+    [ENDPOINT_TYPES.OPENAI_DECISIONS]: 'OpenAI Decisions',
+    [ENDPOINT_TYPES.JEV_DECISIONS]: 'JEV Decisions',
     [ENDPOINT_TYPES.ANTHROPIC]: 'Anthropic',
     [ENDPOINT_TYPES.GEMINI]: 'Gemini',
     [ENDPOINT_TYPES.JINA_RERANK]: 'Rerank',

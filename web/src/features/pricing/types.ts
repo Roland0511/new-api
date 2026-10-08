@@ -56,6 +56,7 @@ export type BillingPluginVariant = {
 }
 
 export type PricingModel = {
+  billing_endpoint_variants?: { endpoint_type: string; effective: string }[]
   billing_plugin_variants?: BillingPluginVariant[]
   id: number
   model_name: string

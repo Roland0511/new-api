@@ -77,6 +77,11 @@ import {
   isUnconfiguredTaskUsageModel,
   type DynamicPriceEntry,
 } from '../lib/dynamic-price'
+import {
+  endpointLabel,
+  endpointPricingModel,
+  isDecisionsEndpoint,
+} from '../lib/endpoint-pricing'
 import { parseTags } from '../lib/filters'
 import { getAvailableGroups, isTokenBasedModel } from '../lib/model-helpers'
 import { withPluginPricing } from '../lib/plugin-pricing'
@@ -1471,6 +1476,16 @@ export interface ModelDetailsContentProps {
 export function ModelDetailsContent(props: ModelDetailsContentProps) {
   const { t } = useTranslation()
   const showRechargePrice = props.showRechargePrice ?? false
+  const endpointVariants =
+    props.model.billing_endpoint_variants?.filter((variant) =>
+      isDecisionsEndpoint(variant.endpoint_type)
+    ) ?? []
+  const showDefault =
+    !endpointVariants.length ||
+    !props.model.supported_endpoint_types?.length ||
+    props.model.supported_endpoint_types.some(
+      (endpoint) => !isDecisionsEndpoint(endpoint)
+    )
 
   const isDynamic =
     props.model.billing_mode === 'tiered_expr' &&
@@ -1512,7 +1527,7 @@ export function ModelDetailsContent(props: ModelDetailsContentProps) {
 
           <section className='bg-card/60 space-y-5 rounded-xl border p-4 shadow-sm'>
             <SectionTitle>{t('Pricing')}</SectionTitle>
-            {showBasePrices && (
+            {showDefault && showBasePrices && (
               <PriceSection
                 model={props.model}
                 priceRate={props.priceRate}
@@ -1521,7 +1536,7 @@ export function ModelDetailsContent(props: ModelDetailsContentProps) {
                 showRechargePrice={showRechargePrice}
               />
             )}
-            {isDynamic && !simpleTaskPricing && (
+            {showDefault && isDynamic && !simpleTaskPricing && (
               <DynamicPricingBreakdown
                 billingExpr={props.model.billing_expr}
                 usageSchema={props.model.billing_usage_schema}
@@ -1532,16 +1547,68 @@ export function ModelDetailsContent(props: ModelDetailsContentProps) {
                 }}
               />
             )}
-            <GroupPricingSection
-              model={props.model}
-              groupRatio={props.groupRatio}
-              usableGroup={props.usableGroup}
-              autoGroups={props.autoGroups}
-              priceRate={props.priceRate}
-              usdExchangeRate={props.usdExchangeRate}
-              tokenUnit={props.tokenUnit}
-              showRechargePrice={showRechargePrice}
-            />
+            {showDefault && (
+              <GroupPricingSection
+                model={props.model}
+                groupRatio={props.groupRatio}
+                usableGroup={props.usableGroup}
+                autoGroups={props.autoGroups}
+                priceRate={props.priceRate}
+                usdExchangeRate={props.usdExchangeRate}
+                tokenUnit={props.tokenUnit}
+                showRechargePrice={showRechargePrice}
+              />
+            )}
+            {endpointVariants.map((variant) => {
+              const model = endpointPricingModel(props.model, variant.effective)
+              return (
+                <section
+                  key={variant.endpoint_type}
+                  className='space-y-4 border-t pt-4'
+                >
+                  <h3 className='text-sm font-medium'>
+                    {endpointLabel(
+                      variant.endpoint_type as
+                        | 'openai-decisions'
+                        | 'jev-decisions'
+                    )}
+                  </h3>
+                  {variant.effective ? (
+                    <>
+                      <PriceSection
+                        model={model}
+                        priceRate={props.priceRate}
+                        usdExchangeRate={props.usdExchangeRate}
+                        tokenUnit={props.tokenUnit}
+                        showRechargePrice={showRechargePrice}
+                      />
+                      <DynamicPricingBreakdown
+                        billingExpr={variant.effective}
+                        taskPriceOptions={{
+                          showRechargePrice,
+                          priceRate: props.priceRate,
+                          usdExchangeRate: props.usdExchangeRate,
+                        }}
+                      />
+                      <GroupPricingSection
+                        model={model}
+                        groupRatio={props.groupRatio}
+                        usableGroup={props.usableGroup}
+                        autoGroups={props.autoGroups}
+                        priceRate={props.priceRate}
+                        usdExchangeRate={props.usdExchangeRate}
+                        tokenUnit={props.tokenUnit}
+                        showRechargePrice={showRechargePrice}
+                      />
+                    </>
+                  ) : (
+                    <p className='text-muted-foreground text-sm'>
+                      {t('Unset price')}
+                    </p>
+                  )}
+                </section>
+              )
+            })}
           </section>
 
           <ModelBackendDetailsSection model={props.model} />

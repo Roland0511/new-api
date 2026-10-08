@@ -14,6 +14,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/pkg/billingexpr"
 	"github.com/QuantumNous/new-api/pkg/jsplugin"
+	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/QuantumNous/new-api/setting/billing_setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
@@ -34,11 +35,19 @@ type ModelPricingChange struct {
 
 type ModelPricingEntry struct {
 	ModelPricingDescription
-	PluginVariants []ModelPricingPluginVariant          `json:"plugin_variants,omitempty"`
-	ModelName      string                               `json:"model_name"`
-	Version        string                               `json:"version"`
-	Configured     PricingValues                        `json:"configured"`
-	UsageSchema    map[string]jsplugin.UsageFieldSchema `json:"usage_schema,omitempty"`
+	PluginVariants   []ModelPricingPluginVariant          `json:"plugin_variants,omitempty"`
+	EndpointVariants []ModelPricingEndpointVariant        `json:"endpoint_variants,omitempty"`
+	ModelName        string                               `json:"model_name"`
+	Version          string                               `json:"version"`
+	Configured       PricingValues                        `json:"configured"`
+	UsageSchema      map[string]jsplugin.UsageFieldSchema `json:"usage_schema,omitempty"`
+}
+
+type ModelPricingEndpointVariant struct {
+	EndpointType types.EndpointType `json:"endpoint_type"`
+	Configured   string             `json:"configured"`
+	Effective    string             `json:"effective"`
+	Builtin      string             `json:"builtin,omitempty"`
 }
 
 type ModelPricingPluginVariant struct {
@@ -66,7 +75,7 @@ var ErrModelPricingConflict = errors.New("model pricing changed; reload before s
 var modelPricingOptionKeys = []string{
 	"AudioCompletionRatio", "AudioRatio", "CacheRatio", "CompletionRatio",
 	"CreateCacheRatio", "ImageRatio", "ModelPrice", "ModelRatio",
-	"billing_setting.billing_expr", "billing_setting.billing_mode", billing_setting.PluginBillingExprOption,
+	"billing_setting.billing_expr", "billing_setting.billing_mode", billing_setting.EndpointBillingExprOption, billing_setting.PluginBillingExprOption,
 }
 
 var modelPricingMutationMu sync.Mutex
@@ -125,6 +134,18 @@ func readModelPricingMaps(db *gorm.DB) (map[string]map[string]any, map[string]bo
 func modelPricingValues(values map[string]map[string]any, name string) PricingValues {
 	result := make(PricingValues)
 	for _, key := range modelPricingOptionKeys {
+		if key == billing_setting.EndpointBillingExprOption {
+			variants := make(map[string]any)
+			for variant, expression := range values[key] {
+				if endpoint, model, ok := billing_setting.SplitEndpointBillingExprKey(variant); ok && model == name {
+					variants[string(endpoint)] = expression
+				}
+			}
+			if len(variants) > 0 {
+				result[key] = variants
+			}
+			continue
+		}
 		if key == billing_setting.PluginBillingExprOption {
 			variants := make(map[string]any)
 			for variant, expression := range values[key] {
@@ -148,6 +169,23 @@ func modelPricingValues(values map[string]map[string]any, name string) PricingVa
 // Plugin expressions are grouped in the draft and flattened only in storage.
 func replaceModelPricing(values map[string]map[string]any, name string, draft PricingValues) {
 	for _, key := range modelPricingOptionKeys {
+		if key == billing_setting.EndpointBillingExprOption {
+			// Older clients do not know this field. Omission preserves it; an
+			// explicit empty object clears only this model's endpoint overrides.
+			if _, supplied := draft[key]; !supplied {
+				continue
+			}
+			for variant := range values[key] {
+				if _, model, ok := billing_setting.SplitEndpointBillingExprKey(variant); ok && model == name {
+					delete(values[key], variant)
+				}
+			}
+			variants, _ := draft[key].(map[string]any)
+			for endpoint, expr := range variants {
+				values[key][billing_setting.EndpointBillingExprKey(types.EndpointType(endpoint), name)] = expr
+			}
+			continue
+		}
 		if key == billing_setting.PluginBillingExprOption {
 			for variant := range values[key] {
 				if _, model, ok := billing_setting.SplitPluginBillingExprKey(variant); ok && model == name {
@@ -169,6 +207,20 @@ func replaceModelPricing(values map[string]map[string]any, name string, draft Pr
 
 func effectiveModelPricing(values map[string]map[string]any, name string) PricingValues {
 	result := modelPricingValues(values, name)
+	endpointExpressions, _ := result[billing_setting.EndpointBillingExprOption].(map[string]any)
+	if endpointExpressions == nil {
+		endpointExpressions = make(map[string]any)
+	}
+	for key, expr := range billing_setting.GetBuiltinEndpointBillingExprCopy() {
+		if endpoint, model, valid := billing_setting.SplitEndpointBillingExprKey(key); valid && model == name {
+			if _, exists := endpointExpressions[string(endpoint)]; !exists {
+				endpointExpressions[string(endpoint)] = expr
+			}
+		}
+	}
+	if len(endpointExpressions) > 0 {
+		result[billing_setting.EndpointBillingExprOption] = endpointExpressions
+	}
 	// Legacy wildcard aliases are resolved by the same normalization as relay.
 	alias := ratio_setting.FormatMatchingModelName(name)
 	for _, key := range []string{"ModelPrice", "ModelRatio", "CompletionRatio", "AudioRatio", "AudioCompletionRatio"} {
@@ -245,6 +297,13 @@ func GetModelPricingSnapshot(names []string) (*ModelPricingSnapshot, error) {
 		nameSet := make(map[string]bool)
 		for key, entries := range values {
 			for name := range entries {
+				if key == billing_setting.EndpointBillingExprOption {
+					_, model, ok := billing_setting.SplitEndpointBillingExprKey(name)
+					if !ok {
+						continue
+					}
+					name = model
+				}
 				if key == billing_setting.PluginBillingExprOption {
 					_, model, ok := billing_setting.SplitPluginBillingExprKey(name)
 					if !ok {
@@ -258,6 +317,11 @@ func GetModelPricingSnapshot(names []string) (*ModelPricingSnapshot, error) {
 		for name := range billing_setting.GetBuiltinBillingExprCopy() {
 			nameSet[name] = true
 		}
+		for key := range billing_setting.GetBuiltinEndpointBillingExprCopy() {
+			if _, name, valid := billing_setting.SplitEndpointBillingExprKey(key); valid {
+				nameSet[name] = true
+			}
+		}
 		for name := range nameSet {
 			names = append(names, name)
 		}
@@ -269,6 +333,14 @@ func GetModelPricingSnapshot(names []string) (*ModelPricingSnapshot, error) {
 		configured := modelPricingValues(values, name)
 		entry := ModelPricingEntry{ModelName: name, Version: ModelPricingVersion(configured), Configured: configured,
 			ModelPricingDescription: ModelPricingDescription{Effective: effectiveModelPricing(values, name)}}
+		configuredEndpoints, _ := configured[billing_setting.EndpointBillingExprOption].(map[string]any)
+		effectiveEndpoints, _ := entry.Effective[billing_setting.EndpointBillingExprOption].(map[string]any)
+		for _, endpoint := range slices.Sorted(maps.Keys(effectiveEndpoints)) {
+			configuredExpr, _ := configuredEndpoints[endpoint].(string)
+			effectiveExpr, _ := effectiveEndpoints[endpoint].(string)
+			builtin := billing_setting.GetBuiltinEndpointBillingExprCopy()[billing_setting.EndpointBillingExprKey(types.EndpointType(endpoint), name)]
+			entry.EndpointVariants = append(entry.EndpointVariants, ModelPricingEndpointVariant{EndpointType: types.EndpointType(endpoint), Configured: configuredExpr, Effective: effectiveExpr, Builtin: builtin})
+		}
 		entry.CacheWriteMode = ResolveCacheWriteMode(name, configured)
 		entry.BillingDetails = ResolveLegacyBillingDetails(name, entry.Effective, configured)
 		if plugin, ok := generation.GetByModel(name); ok {
@@ -392,6 +464,28 @@ func validateModelPricing(name string, values, previous PricingValues) error {
 		}
 	}
 	for key, value := range values {
+		if key == billing_setting.EndpointBillingExprOption {
+			variants, ok := value.(map[string]any)
+			if !ok || variants == nil {
+				return errors.New("endpoint billing expressions must be an endpoint-to-expression object")
+			}
+			for endpoint, value := range variants {
+				if _, _, valid := billing_setting.SplitEndpointBillingExprKey(endpoint + "::" + name); !valid {
+					return fmt.Errorf("invalid pricing endpoint: %s", endpoint)
+				}
+				expression, ok := value.(string)
+				if !ok || strings.TrimSpace(expression) == "" {
+					return errors.New("endpoint billing expression is required")
+				}
+				if err := billing_setting.SmokeTestExpr(expression); err != nil {
+					return fmt.Errorf("endpoint %s: %w", endpoint, err)
+				}
+				if billingexpr.UsesFixedPricing(expression) {
+					return errors.New("Decisions requires token pricing")
+				}
+			}
+			continue
+		}
 		if key == billing_setting.PluginBillingExprOption {
 			continue
 		}
@@ -482,6 +576,7 @@ func UpdateModelPricing(changes []ModelPricingChange) error {
 			pricing := change.Pricing
 			if change.Reset {
 				pricing = modelPricingValues(defaults, change.ModelName)
+				pricing[billing_setting.EndpointBillingExprOption] = map[string]any{}
 			}
 			if err := validateModelPricing(change.ModelName, pricing, previous); err != nil {
 				return err
@@ -511,6 +606,13 @@ func UpdateModelPricingOptions(updates map[string]string) error {
 			}
 			for _, entriesForKey := range []map[string]any{values[key], entries} {
 				for name := range entriesForKey {
+					if key == billing_setting.EndpointBillingExprOption {
+						_, model, ok := billing_setting.SplitEndpointBillingExprKey(name)
+						if !ok {
+							return fmt.Errorf("invalid endpoint billing expression key: %s", name)
+						}
+						name = model
+					}
 					if key == billing_setting.PluginBillingExprOption {
 						_, model, ok := billing_setting.SplitPluginBillingExprKey(name)
 						if !ok {

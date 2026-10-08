@@ -1,5 +1,12 @@
 {
   "translation": {
+    "Decisions prices are separate from chat and Responses prices.": "Decisions 与聊天、Responses 分别计价。",
+    "Override endpoint pricing": "自定义此端点价格",
+    "Enter an endpoint price before saving.": "请填写端点价格后再保存。",
+    "Set an endpoint price to enable Decisions requests.": "设置端点价格后即可调用 Decisions。",
+    "Evaluate content with TypeSafe JEV Decisions": "通过 TypeSafe JEV Decisions 判断内容",
+    "OpenAI Decisions (/v1/decisions)": "OpenAI Decisions (/v1/decisions)",
+    "JEV Decisions (/v1/decisions)": "JEV Decisions (/v1/decisions)",
     "360": "360",
     "1000": "1000",
     "10000": "10000",

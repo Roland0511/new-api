@@ -53,6 +53,7 @@ import {
   pricingOptions,
 } from '@/features/model-pricing/pricing'
 import { usePricingData } from '@/features/pricing/hooks/use-pricing-data'
+import { splitEndpointBillingExprKey } from '@/features/pricing/lib/endpoint-pricing'
 import { splitPluginBillingExprKey } from '@/features/pricing/lib/plugin-pricing'
 import { useMediaQuery } from '@/hooks'
 
@@ -87,6 +88,7 @@ type ModelRatioVisualEditorProps = {
   savedBillingMode: string
   savedBillingExpr: string
   savedPluginBillingExpr?: string
+  savedEndpointBillingExpr?: string
   modelPrice: string
   modelRatio: string
   cacheRatio: string
@@ -98,6 +100,7 @@ type ModelRatioVisualEditorProps = {
   billingMode: string
   billingExpr: string
   pluginBillingExpr?: string
+  endpointBillingExpr?: string
   candidateModelNames?: string[]
   candidateModelsLoading?: boolean
   filterMode?: 'all' | 'unset'
@@ -128,6 +131,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
     savedBillingMode,
     savedBillingExpr,
     savedPluginBillingExpr = '{}',
+    savedEndpointBillingExpr = '{}',
     modelPrice,
     modelRatio,
     cacheRatio,
@@ -139,6 +143,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
     billingMode,
     billingExpr,
     pluginBillingExpr = '{}',
+    endpointBillingExpr = '{}',
     candidateModelNames,
     candidateModelsLoading,
     filterMode = 'all',
@@ -233,6 +238,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
       billingMode: savedBillingMode,
       billingExpr: savedBillingExpr,
       pluginBillingExpr: savedPluginBillingExpr,
+      endpointBillingExpr: savedEndpointBillingExpr,
     })
     const draftRows = buildModelSnapshots({
       modelPrice,
@@ -246,6 +252,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
       billingMode,
       billingExpr,
       pluginBillingExpr,
+      endpointBillingExpr,
     })
 
     const savedByName = new Map(savedRows.map((row) => [row.name, row]))
@@ -290,6 +297,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
     savedBillingMode,
     savedBillingExpr,
     savedPluginBillingExpr,
+    savedEndpointBillingExpr,
     modelPrice,
     modelRatio,
     cacheRatio,
@@ -301,6 +309,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
     billingMode,
     billingExpr,
     pluginBillingExpr,
+    endpointBillingExpr,
   ])
 
   const modeCounts = useMemo(() => {
@@ -350,6 +359,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
         billingMode: editBillingMode,
         billingExpr: editableModel.billingExpr,
         pluginBillingExpr: editableModel.pluginBillingExpr,
+        endpointBillingExpr: editableModel.endpointBillingExpr,
         requestRuleExpr: editableModel.requestRuleExpr,
       })
       setEditorOpen(true)
@@ -445,6 +455,18 @@ const ModelRatioVisualEditorComponent = forwardRef<
         'billing_setting.plugin_billing_expr',
         JSON.stringify(pluginExprMap)
       )
+      const endpointExprMap = safeJsonParse<Record<string, string>>(
+        endpointBillingExpr,
+        { fallback: {} }
+      )
+      for (const variant of Object.keys(endpointExprMap)) {
+        if (splitEndpointBillingExprKey(variant)?.[1] === name)
+          {delete endpointExprMap[variant]}
+      }
+      onChange(
+        'billing_setting.endpoint_billing_expr',
+        JSON.stringify(endpointExprMap)
+      )
 
       onChange('ModelPrice', JSON.stringify(priceMap, null, 2))
       onChange('ModelRatio', JSON.stringify(ratioMap, null, 2))
@@ -486,6 +508,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
       pluginBillingExpr,
       onChange,
       editData,
+      endpointBillingExpr,
     ]
   )
 
@@ -548,6 +571,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
         BillingMode: billingMode,
         BillingExpr: billingExpr,
         PluginBillingExpr: pluginBillingExpr,
+        EndpointBillingExpr: endpointBillingExpr,
       })
       const updated = applyPricingDraft(options, data, targetNames)
       for (const [key, value] of Object.entries(updated)) onChange(key, value)
@@ -565,6 +589,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
       billingExpr,
       pluginBillingExpr,
       onChange,
+      endpointBillingExpr,
     ]
   )
 
@@ -748,6 +773,11 @@ const ModelRatioVisualEditorComponent = forwardRef<
                   (entry) => entry.model_name === editData?.name
                 )?.plugin_variants
               }
+              endpointVariants={
+                pricingConfig.data?.entries.find(
+                  (entry) => entry.model_name === editData?.name
+                )?.endpoint_variants
+              }
               usageSchema={
                 pricingConfig.data?.entries.find(
                   (entry) => entry.model_name === editData?.name
@@ -798,6 +828,11 @@ const ModelRatioVisualEditorComponent = forwardRef<
               (entry) => entry.model_name === editData?.name
             )?.plugin_variants
           }
+          endpointVariants={
+            pricingConfig.data?.entries.find(
+              (entry) => entry.model_name === editData?.name
+            )?.endpoint_variants
+          }
           usageSchema={
             pricingConfig.data?.entries.find(
               (entry) => entry.model_name === editData?.name
@@ -828,6 +863,9 @@ export const ModelRatioVisualEditor = memo(
       prevProps.savedBillingMode === nextProps.savedBillingMode &&
       prevProps.savedBillingExpr === nextProps.savedBillingExpr &&
       prevProps.savedPluginBillingExpr === nextProps.savedPluginBillingExpr &&
+      prevProps.savedEndpointBillingExpr ===
+        nextProps.savedEndpointBillingExpr &&
+      prevProps.endpointBillingExpr === nextProps.endpointBillingExpr &&
       prevProps.modelPrice === nextProps.modelPrice &&
       prevProps.modelRatio === nextProps.modelRatio &&
       prevProps.cacheRatio === nextProps.cacheRatio &&

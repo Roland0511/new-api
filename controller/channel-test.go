@@ -26,6 +26,7 @@ import (
 	"github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting/billing_setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	hosttypes "github.com/QuantumNous/new-api/types"
 
@@ -48,6 +49,9 @@ func normalizeChannelTestEndpoint(channel *model.Channel, endpointType string) s
 	}
 	if channel != nil && channel.Type == constant.ChannelTypeCodex {
 		return string(constant.EndpointTypeOpenAIResponse)
+	}
+	if channel != nil && channel.Type == constant.ChannelTypeTypeSafe {
+		return string(constant.EndpointTypeJEVDecisions)
 	}
 	return normalized
 }
@@ -109,6 +113,9 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 	}
 
 	endpointType = normalizeChannelTestEndpoint(channel, endpointType)
+	if isStream && (constant.EndpointType(endpointType) == constant.EndpointTypeOpenAIDecisions || constant.EndpointType(endpointType) == constant.EndpointTypeJEVDecisions) {
+		return testResult{localErr: errors.New("Decisions channel tests do not support streaming")}
+	}
 
 	requestPath := "/v1/chat/completions"
 
@@ -182,6 +189,10 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 	if endpointType != "" {
 		// 根据指定的端点类型设置 relayFormat
 		switch constant.EndpointType(endpointType) {
+		case constant.EndpointTypeOpenAIDecisions:
+			relayFormat = types.RelayFormatOpenAIDecisions
+		case constant.EndpointTypeJEVDecisions:
+			relayFormat = types.RelayFormatJEVDecisions
 		case constant.EndpointTypeOpenAI:
 			relayFormat = types.RelayFormatOpenAI
 		case constant.EndpointTypeOpenAIResponse:
@@ -241,6 +252,14 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 
 	info.IsChannelTest = true
 	info.InitChannelMeta(c)
+	if relayFormat == types.RelayFormatOpenAIDecisions && channel.Type != constant.ChannelTypeOpenAI || relayFormat == types.RelayFormatJEVDecisions && channel.Type != constant.ChannelTypeTypeSafe && channel.Type != constant.ChannelTypeOpenRouter {
+		return testResult{localErr: errors.New("channel does not support this Decisions protocol")}
+	}
+	if relayFormat == types.RelayFormatJEVDecisions && channel.Type == constant.ChannelTypeOpenRouter {
+		if _, configured := billing_setting.GetConfiguredEndpointBillingExpr(types.EndpointTypeJEVDecisions, testModel); !configured {
+			return testResult{localErr: errors.New("OpenRouter Decisions price is not configured")}
+		}
+	}
 
 	err = attachTestBillingRequestInput(info, request)
 	if err != nil {
@@ -308,6 +327,8 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 	var convertedRequest any
 	// 根据 RelayMode 选择正确的转换函数
 	switch info.RelayMode {
+	case relayconstant.RelayModeDecisions:
+		convertedRequest = request
 	case relayconstant.RelayModeEmbeddings:
 		// Embedding 请求 - request 已经是正确的类型
 		if embeddingReq, ok := request.(*dto.EmbeddingRequest); ok {
@@ -413,7 +434,7 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 	//	}
 	//}
 
-	if len(info.ParamOverride) > 0 {
+	if len(info.ParamOverride) > 0 && info.RelayMode != relayconstant.RelayModeDecisions {
 		jsonData, err = relaycommon.ApplyParamOverrideWithRelayInfo(jsonData, info)
 		if err != nil {
 			if fixedErr, ok := relaycommon.AsParamOverrideReturnError(err); ok {
@@ -428,6 +449,13 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 				localErr:    err,
 				newAPIError: types.NewError(err, types.ErrorCodeChannelParamOverrideInvalid),
 			}
+		}
+	}
+	if decisions, ok := request.(dto.DecisionsRequest); ok {
+		var apiErr *types.NewAPIError
+		request, jsonData, apiErr = relay.BuildDecisionsRequestBody(info, decisions)
+		if apiErr != nil {
+			return testResult{context: c, localErr: apiErr, newAPIError: apiErr}
 		}
 	}
 
@@ -463,7 +491,22 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 			}
 		}
 	}
-	usageA, respErr := adaptor.DoResponse(c, httpResp, info)
+	var usageA any
+	var respErr *types.NewAPIError
+	if decisions, ok := request.(dto.DecisionsRequest); ok {
+		defer httpResp.Body.Close()
+		body, readErr := io.ReadAll(io.LimitReader(httpResp.Body, (32<<20)+1))
+		if readErr != nil || len(body) > 32<<20 {
+			return testResult{context: c, localErr: errors.New("invalid Decisions response body")}
+		}
+		usageA, err = dto.ValidateDecisionsResponse(decisions, body)
+		if err != nil {
+			return testResult{context: c, localErr: err, newAPIError: types.NewError(err, types.ErrorCodeBadResponse)}
+		}
+		c.Data(http.StatusOK, "application/json", body)
+	} else {
+		usageA, respErr = adaptor.DoResponse(c, httpResp, info)
+	}
 	if respErr != nil {
 		return testResult{
 			context:     c,
@@ -704,6 +747,14 @@ func buildTestRequest(model string, endpointType string, channel *model.Channel,
 	// 根据端点类型构建不同的测试请求
 	if endpointType != "" {
 		switch constant.EndpointType(endpointType) {
+		case constant.EndpointTypeOpenAIDecisions:
+			request := &dto.OpenAIDecisionsRequest{Model: model, Input: json.RawMessage(`"The sky is blue."`), Questions: []dto.OpenAIDecisionQuestion{{Type: "predicate", Instructions: "Is the sky described as blue?"}}}
+			request.RawBody, _ = common.Marshal(request)
+			return request
+		case constant.EndpointTypeJEVDecisions:
+			request := &dto.JEVDecisionsRequest{Model: model, State: json.RawMessage(`"The sky is blue."`), Questions: map[string]dto.JEVDecisionQuestion{"blue": {Type: "noul", Instructions: json.RawMessage(`"Is the sky described as blue?"`)}}}
+			request.RawBody, _ = common.Marshal(request)
+			return request
 		case constant.EndpointTypeEmbeddings:
 			// 返回 EmbeddingRequest
 			return &dto.EmbeddingRequest{

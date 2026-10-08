@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { t } from 'i18next'
 
 import { combineBillingExpr } from '@/features/pricing/lib/billing-expr'
+import { splitEndpointBillingExprKey } from '@/features/pricing/lib/endpoint-pricing'
 import { splitPluginBillingExprKey } from '@/features/pricing/lib/plugin-pricing'
 import type { PricingModel } from '@/features/pricing/types'
 import type { ModelRatioData } from '@/features/system-settings/models/model-pricing-core'
@@ -41,17 +42,27 @@ export const PRICING_KEYS = [
   'billing_setting.billing_mode',
   'billing_setting.billing_expr',
   'billing_setting.plugin_billing_expr',
+  'billing_setting.endpoint_billing_expr',
 ] as const
 export type PricingKey = (typeof PRICING_KEYS)[number]
 export type PricingValues = Partial<
   Record<
-    Exclude<PricingKey, 'billing_setting.plugin_billing_expr'>,
+    Exclude<
+      PricingKey,
+      | 'billing_setting.plugin_billing_expr'
+      | 'billing_setting.endpoint_billing_expr'
+    >,
     number | string
   >
 > & {
   'billing_setting.plugin_billing_expr'?: Record<string, string>
+  'billing_setting.endpoint_billing_expr'?: Record<string, string>
 }
-export type PricingOptions = Record<PricingKey, string>
+export type PricingOptions = Record<
+  Exclude<PricingKey, 'billing_setting.endpoint_billing_expr'>,
+  string
+> &
+  Partial<Record<'billing_setting.endpoint_billing_expr', string>>
 
 export type CacheWriteMode = 'none' | 'standard' | 'claude_ttl'
 
@@ -113,6 +124,9 @@ export function modelPricingDisplay(
         ? values['billing_setting.billing_expr']
         : undefined,
     billing_usage_schema: entry.usage_schema,
+    billing_endpoint_variants: Object.entries(
+      values['billing_setting.endpoint_billing_expr'] ?? {}
+    ).map(([endpoint_type, effective]) => ({ endpoint_type, effective })),
   }
 }
 
@@ -138,6 +152,8 @@ export function pricingOptions(
       if (key === 'billing_setting.plugin_billing_expr') {
         value ??= values.PluginBillingExpr
       }
+      if (key === 'billing_setting.endpoint_billing_expr')
+        {value ??= values.EndpointBillingExpr}
       return [key, typeof value === 'string' ? value : '{}']
     })
   ) as PricingOptions
@@ -156,6 +172,7 @@ export function pricingRows(options: PricingOptions): ModelPricingSnapshot[] {
     billingMode: options['billing_setting.billing_mode'],
     billingExpr: options['billing_setting.billing_expr'],
     pluginBillingExpr: options['billing_setting.plugin_billing_expr'],
+    endpointBillingExpr: options['billing_setting.endpoint_billing_expr'],
   })
 }
 
@@ -165,7 +182,10 @@ export function pricingRow(
 ): ModelRatioData {
   const options = Object.fromEntries(
     PRICING_KEYS.map((key) => {
-      if (key === 'billing_setting.plugin_billing_expr') {
+      if (
+        key === 'billing_setting.plugin_billing_expr' ||
+        key === 'billing_setting.endpoint_billing_expr'
+      ) {
         return [
           key,
           JSON.stringify(
@@ -195,11 +215,15 @@ export function pricingRow(
     name,
     billingMode,
     pluginBillingExpr: values['billing_setting.plugin_billing_expr'],
+    endpointBillingExpr: values['billing_setting.endpoint_billing_expr'],
   }
 }
 
 export function pricingFromDraft(data: ModelRatioData): PricingValues {
   const values: PricingValues = {
+    ...(data.endpointBillingExpr === undefined
+      ? {}
+      : { 'billing_setting.endpoint_billing_expr': data.endpointBillingExpr }),
     ...(data.pluginBillingExpr === undefined
       ? {}
       : { 'billing_setting.plugin_billing_expr': data.pluginBillingExpr }),
@@ -244,6 +268,7 @@ export function applyPricingDraft(
   // to other models, while still committing the source provider draft.
   const copied = { ...values }
   delete copied['billing_setting.plugin_billing_expr']
+  delete copied['billing_setting.endpoint_billing_expr']
   const next = applyPricingValues(options, copied, names)
   return names.includes(data.name)
     ? applyPricingValues(next, values, [data.name])
@@ -261,12 +286,19 @@ function applyPricingValues(
         string,
         number | string
       >
-      if (key === 'billing_setting.plugin_billing_expr') {
+      if (
+        key === 'billing_setting.plugin_billing_expr' ||
+        key === 'billing_setting.endpoint_billing_expr'
+      ) {
         // Model-only imports and batch copies retain each target's provider prices.
         if (values[key] === undefined) return [key, JSON.stringify(map)]
         for (const name of names) {
           for (const variant of Object.keys(map)) {
-            if (splitPluginBillingExprKey(variant)?.[1] === name) {
+            if (
+              (key === 'billing_setting.plugin_billing_expr'
+                ? splitPluginBillingExprKey(variant)
+                : splitEndpointBillingExprKey(variant))?.[1] === name
+            ) {
               delete map[variant]
             }
           }
@@ -305,8 +337,14 @@ export function pricingValuesByModel(
       if (typeof value !== 'number' && typeof value !== 'string') {
         throw new Error(t('Invalid pricing value'))
       }
-      if (key === 'billing_setting.plugin_billing_expr') {
-        const parts = splitPluginBillingExprKey(name)
+      if (
+        key === 'billing_setting.plugin_billing_expr' ||
+        key === 'billing_setting.endpoint_billing_expr'
+      ) {
+        const parts =
+          key === 'billing_setting.plugin_billing_expr'
+            ? splitPluginBillingExprKey(name)
+            : splitEndpointBillingExprKey(name)
         if (!parts || typeof value !== 'string') {
           throw new Error(t('Invalid pricing value'))
         }
@@ -349,7 +387,8 @@ export function applyPriceSyncSelections(
           .join('') as PricingKey
         if (
           PRICING_KEYS.includes(key) &&
-          key !== 'billing_setting.plugin_billing_expr'
+          key !== 'billing_setting.plugin_billing_expr' &&
+          key !== 'billing_setting.endpoint_billing_expr'
         ) {
           next[key] = value
         }

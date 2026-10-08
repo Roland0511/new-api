@@ -30,6 +30,11 @@ import {
   getDynamicPricingSummary,
   isUnconfiguredTaskUsageModel,
 } from '../lib/dynamic-price'
+import {
+  endpointLabel,
+  endpointPricingModel,
+  isDecisionsEndpoint,
+} from '../lib/endpoint-pricing'
 import { isTokenBasedModel } from '../lib/model-helpers'
 import { formatPrice, formatRequestPrice } from '../lib/price'
 import { taskUsageUnitLabel } from '../lib/task-price-display'
@@ -83,6 +88,49 @@ export function ModelPriceCell(props: {
       currency,
     ]
   )
+  const endpointVariants =
+    props.model.billing_endpoint_variants?.filter((variant) =>
+      isDecisionsEndpoint(variant.endpoint_type)
+    ) ?? []
+  if (endpointVariants.length) {
+    const showDefault =
+      !props.model.supported_endpoint_types?.length ||
+      props.model.supported_endpoint_types.some(
+        (endpoint) => !isDecisionsEndpoint(endpoint)
+      )
+    return (
+      <div className='space-y-3'>
+        {showDefault && (
+          <div>
+            <p className='text-muted-foreground mb-1 text-xs'>{t('Default')}</p>
+            <ModelPriceCell
+              {...props}
+              model={{ ...props.model, billing_endpoint_variants: undefined }}
+            />
+          </div>
+        )}
+        {endpointVariants.map((variant) => (
+          <div key={variant.endpoint_type}>
+            <p className='text-muted-foreground mb-1 text-xs'>
+              {endpointLabel(
+                variant.endpoint_type as 'openai-decisions' | 'jev-decisions'
+              )}
+            </p>
+            {variant.effective ? (
+              <ModelPriceCell
+                {...props}
+                model={endpointPricingModel(props.model, variant.effective)}
+              />
+            ) : (
+              <span className='text-muted-foreground text-sm'>
+                {t('Unset price')}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  }
   let metrics: Array<{ label: string; value: string }>
   const providerCaption = dynamic?.providerCount
     ? t('{{count}} providers', { count: dynamic.providerCount })

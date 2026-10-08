@@ -23,6 +23,23 @@ func GetAndValidateRequest(c *gin.Context, format types.RelayFormat) (request dt
 	relayMode := relayconstant.Path2RelayMode(c.Request.URL.Path)
 
 	switch format {
+	case types.RelayFormatOpenAIDecisions, types.RelayFormatJEVDecisions:
+		storage, bodyErr := common.GetBodyStorage(c)
+		if bodyErr != nil {
+			return nil, bodyErr
+		}
+		body, bodyErr := storage.Bytes()
+		if bodyErr != nil {
+			return nil, bodyErr
+		}
+		decisions, parseErr := dto.ParseDecisionsRequest(body)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		if decisions.DecisionsFormat() != format {
+			return nil, errors.New("decisions protocol mismatch")
+		}
+		return decisions, nil
 	case types.RelayFormatOpenAI:
 		request, err = GetAndValidateTextRequest(c, relayMode)
 	case types.RelayFormatGemini:

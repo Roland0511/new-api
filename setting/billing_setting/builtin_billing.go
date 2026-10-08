@@ -1,5 +1,17 @@
 package billing_setting
 
+// Decisions rates are independent of the same model's chat/Responses prices.
+// OpenAI: https://developers.openai.com/api/docs/guides/decisions
+// TypeSafe: https://docs.typesafe.ai/models (2026-10-08).
+// Zero cache terms are explicit so normalization excludes both cache classes
+// from p, while len still includes the entire input for tier selection.
+var builtinEndpointBillingExpr = map[string]string{
+	"openai-decisions::gpt-6-luna": `len <= 272000 ? tier("standard", p * 0.10 + cr * 0 + cc * 0 + c * 0) : tier("long_context", p * 0.20 + cr * 0 + cc * 0 + c * 0)`,
+	"jev-decisions::jev-1.13.0":    `tier("standard", p * 0.042 + c * 0)`,
+	"jev-decisions::jev-latest":    `tier("standard", p * 0.042 + c * 0)`,
+	"jev-decisions::jev-preview":   `tier("standard", p * 0.042 + c * 0)`,
+}
+
 // Built-in token prices use actual USD per million tokens. Keep new model
 // defaults here instead of splitting them across the legacy ratio tables.
 var builtinBillingExpr = map[string]string{

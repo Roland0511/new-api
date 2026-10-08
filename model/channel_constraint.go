@@ -5,9 +5,12 @@ import (
 
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/relaykit/types"
+	"github.com/QuantumNous/new-api/setting/billing_setting"
 )
 
 var filterEvalOrder = []dto.ChannelFilterKind{
+	dto.FilterDecisionsProtocol,
 	dto.FilterRequestPath,
 	dto.FilterTaskPluginIdentity,
 	dto.FilterResponsesWebSocket,
@@ -89,7 +92,23 @@ func candidatePassesKindFilters(ch *Channel, exists bool, modelName string, kind
 
 func channelMatchesFilter(ch *Channel, modelName string, filter dto.ChannelFilter) bool {
 	switch filter.Kind {
+	case dto.FilterDecisionsProtocol:
+		switch filter.DecisionsProtocol {
+		case "openai_decisions":
+			return ch.Type == constant.ChannelTypeOpenAI
+		case "jev_decisions":
+			if ch.Type == constant.ChannelTypeTypeSafe {
+				return true
+			}
+			_, priced := billing_setting.GetConfiguredEndpointBillingExpr(types.EndpointTypeJEVDecisions, modelName)
+			return ch.Type == constant.ChannelTypeOpenRouter && priced
+		default:
+			return false
+		}
 	case dto.FilterRequestPath:
+		if ch.Type == constant.ChannelTypeTypeSafe {
+			return filter.RequestPath == "/v1/decisions"
+		}
 		if filter.RequestPath == "" {
 			return true
 		}

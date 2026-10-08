@@ -1,11 +1,17 @@
 package common
 
-import "github.com/QuantumNous/new-api/constant"
+import (
+	"strings"
+
+	"github.com/QuantumNous/new-api/constant"
+)
 
 // GetEndpointTypesByChannelType 获取渠道最优先端点类型（所有的渠道都支持 OpenAI 端点）
 func GetEndpointTypesByChannelType(channelType int, modelName string) []constant.EndpointType {
 	var endpointTypes []constant.EndpointType
 	switch channelType {
+	case constant.ChannelTypeTypeSafe:
+		return []constant.EndpointType{constant.EndpointTypeJEVDecisions}
 	case constant.ChannelTypeJina:
 		endpointTypes = []constant.EndpointType{constant.EndpointTypeJinaRerank}
 	//case constant.ChannelTypeMidjourney, constant.ChannelTypeMidjourneyPlus:
@@ -26,6 +32,9 @@ func GetEndpointTypesByChannelType(channelType int, modelName string) []constant
 		endpointTypes = []constant.EndpointType{constant.EndpointTypeGemini, constant.EndpointTypeOpenAI}
 	case constant.ChannelTypeOpenRouter: // OpenRouter 只支持 OpenAI 端点
 		endpointTypes = []constant.EndpointType{constant.EndpointTypeOpenAI}
+		if strings.HasPrefix(modelName, "typesafe/jev-") || strings.HasPrefix(modelName, "~typesafe/jev-") {
+			endpointTypes = append(endpointTypes, constant.EndpointTypeJEVDecisions)
+		}
 	case constant.ChannelTypeXai:
 		endpointTypes = []constant.EndpointType{constant.EndpointTypeOpenAI, constant.EndpointTypeOpenAIResponse}
 	case constant.ChannelTypeVLLM, constant.ChannelTypeSGLang:
@@ -57,6 +66,9 @@ func GetEndpointTypesByChannelType(channelType int, modelName string) []constant
 	if IsImageGenerationModel(modelName) {
 		// add to first
 		endpointTypes = append([]constant.EndpointType{constant.EndpointTypeImageGeneration}, endpointTypes...)
+	}
+	if channelType == constant.ChannelTypeOpenAI && modelName == "gpt-6-luna" {
+		endpointTypes = append(endpointTypes, constant.EndpointTypeOpenAIDecisions)
 	}
 	return endpointTypes
 }

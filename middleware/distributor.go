@@ -40,6 +40,25 @@ func Distribute() func(c *gin.Context) {
 			}
 		}()
 		constraints := service.GetChannelConstraints(c)
+		if c.Request.URL.Path == "/v1/decisions" {
+			storage, err := common.GetBodyStorage(c)
+			if err != nil {
+				abortWithOpenAiMessage(c, http.StatusBadRequest, "invalid decisions request body")
+				return
+			}
+			body, err := storage.Bytes()
+			if err != nil {
+				abortWithOpenAiMessage(c, http.StatusBadRequest, "invalid decisions request body")
+				return
+			}
+			request, err := dto.ParseDecisionsRequest(body)
+			if err != nil {
+				abortWithOpenAiMessage(c, http.StatusBadRequest, err.Error())
+				return
+			}
+			c.Set("decisions_format", string(request.DecisionsFormat()))
+			constraints.AddFilter(taskdto.ChannelFilter{Kind: taskdto.FilterDecisionsProtocol, DecisionsProtocol: string(request.DecisionsFormat())})
+		}
 		constraints.AddFilter(taskdto.ChannelFilter{
 			Kind:        taskdto.FilterRequestPath,
 			RequestPath: c.Request.URL.Path,

@@ -40,6 +40,8 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useStatus } from '@/hooks/use-status'
 
+import { buildDecisionsSample } from '../lib/decisions-sample'
+import { endpointLabel, isDecisionsEndpoint } from '../lib/endpoint-pricing'
 import {
   buildRateLimits,
   buildSupportedParameters,
@@ -109,7 +111,7 @@ function buildChatSample(lang: Lang, ctx: SampleContext): string {
       `curl ${url} \\`,
       `  -H "Authorization: Bearer $${ctx.apiKeyEnv}" \\`,
       `  -H "Content-Type: application/json" \\`,
-      `  -d '${bodyJson.replace(/\n/g, '\n     ')}'`,
+      `  -d '${bodyJson.replaceAll('\n', '\n     ')}'`,
     ].join('\n')
   }
 
@@ -177,7 +179,7 @@ function buildAnthropicSample(lang: Lang, ctx: SampleContext): string {
       `  -H "x-api-key: $${ctx.apiKeyEnv}" \\`,
       `  -H "anthropic-version: 2023-06-01" \\`,
       `  -H "Content-Type: application/json" \\`,
-      `  -d '${body.replace(/\n/g, '\n     ')}'`,
+      `  -d '${body.replaceAll('\n', '\n     ')}'`,
     ].join('\n')
   }
   if (lang === 'python') {
@@ -249,7 +251,7 @@ function buildGeminiSample(lang: Lang, ctx: SampleContext): string {
     return [
       `curl '${url}' \\`,
       `  -H 'Content-Type: application/json' \\`,
-      `  -d '${body.replace(/\n/g, '\n     ')}'`,
+      `  -d '${body.replaceAll('\n', '\n     ')}'`,
     ].join('\n')
   }
   if (lang === 'python') {
@@ -299,7 +301,7 @@ function buildEmbeddingSample(lang: Lang, ctx: SampleContext): string {
       `curl ${url} \\`,
       `  -H "Authorization: Bearer $${ctx.apiKeyEnv}" \\`,
       `  -H "Content-Type: application/json" \\`,
-      `  -d '${body.replace(/\n/g, '\n     ')}'`,
+      `  -d '${body.replaceAll('\n', '\n     ')}'`,
     ].join('\n')
   }
   if (lang === 'python') {
@@ -365,7 +367,7 @@ function buildImageSample(lang: Lang, ctx: SampleContext): string {
       `curl ${url} \\`,
       `  -H "Authorization: Bearer $${ctx.apiKeyEnv}" \\`,
       `  -H "Content-Type: application/json" \\`,
-      `  -d '${body.replace(/\n/g, '\n     ')}'`,
+      `  -d '${body.replaceAll('\n', '\n     ')}'`,
     ].join('\n')
   }
   if (lang === 'python') {
@@ -428,10 +430,12 @@ function buildSample(
   endpointType: string,
   ctx: SampleContext
 ): string {
+  if (isDecisionsEndpoint(endpointType)) return buildDecisionsSample(lang, ctx)
   if (endpointType === 'anthropic') return buildAnthropicSample(lang, ctx)
   if (endpointType === 'gemini') return buildGeminiSample(lang, ctx)
-  if (endpointType === 'embeddings' || endpointType === 'jina-rerank')
+  if (endpointType === 'embeddings' || endpointType === 'jina-rerank') {
     return buildEmbeddingSample(lang, ctx)
+  }
   if (endpointType === 'image-generation') return buildImageSample(lang, ctx)
   return buildChatSample(lang, ctx)
 }
@@ -509,7 +513,9 @@ function CodeSamplesSection(props: {
                   value={ep.type}
                   className='h-7 px-2.5 text-xs'
                 >
-                  {ep.type}
+                  {isDecisionsEndpoint(ep.type)
+                    ? endpointLabel(ep.type)
+                    : ep.type}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -559,7 +565,7 @@ function SupportedParametersSection(props: { model: PricingModel }) {
     [props.model]
   )
 
-  if (params.length === 0) return null
+  if (params.length === 0 || props.model.supported_endpoint_types?.every(isDecisionsEndpoint)) return null
 
   return (
     <section>

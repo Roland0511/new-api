@@ -420,6 +420,23 @@ func UpdateOption(c *gin.Context) {
 				return
 			}
 		}
+	case billing_setting.EndpointBillingExprOption:
+		var expressions map[string]string
+		if err = common.UnmarshalJsonStr(option.Value.(string), &expressions); err != nil || expressions == nil {
+			common.ApiErrorMsg(c, "endpoint billing expressions must be a JSON object")
+			return
+		}
+		for key, expression := range expressions {
+			endpoint, name, valid := billing_setting.SplitEndpointBillingExprKey(key)
+			if !valid {
+				common.ApiErrorMsg(c, "invalid endpoint billing expression key: "+key)
+				return
+			}
+			if err = model.ValidateModelPricing(name, model.PricingValues{billing_setting.EndpointBillingExprOption: map[string]any{string(endpoint): expression}}); err != nil {
+				common.ApiErrorMsg(c, err.Error())
+				return
+			}
+		}
 	case billing_setting.PluginBillingExprOption:
 		var expressions map[string]string
 		if err = common.UnmarshalJsonStr(option.Value.(string), &expressions); err != nil || expressions == nil {

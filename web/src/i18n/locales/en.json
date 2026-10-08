@@ -1,5 +1,12 @@
 {
   "translation": {
+    "Decisions prices are separate from chat and Responses prices.": "Decisions prices are separate from chat and Responses prices.",
+    "Override endpoint pricing": "Override endpoint pricing",
+    "Enter an endpoint price before saving.": "Enter an endpoint price before saving.",
+    "Set an endpoint price to enable Decisions requests.": "Set an endpoint price to enable Decisions requests.",
+    "Evaluate content with TypeSafe JEV Decisions": "Evaluate content with TypeSafe JEV Decisions",
+    "OpenAI Decisions (/v1/decisions)": "OpenAI Decisions (/v1/decisions)",
+    "JEV Decisions (/v1/decisions)": "JEV Decisions (/v1/decisions)",
     "360": "360",
     "1000": "1000",
     "10000": "10000",

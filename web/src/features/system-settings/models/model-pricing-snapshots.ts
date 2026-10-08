@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { splitBillingExprAndRequestRules } from '@/features/pricing/lib/billing-expr'
+import { splitEndpointBillingExprKey } from '@/features/pricing/lib/endpoint-pricing'
 import { splitPluginBillingExprKey } from '@/features/pricing/lib/plugin-pricing'
 
 import { safeJsonParse } from '../utils/json-parser'
@@ -34,9 +35,11 @@ export type ModelPricingSnapshotInput = {
   billingMode: string
   billingExpr: string
   pluginBillingExpr?: string
+  endpointBillingExpr?: string
 }
 
 export type ModelPricingSnapshot = {
+  endpointBillingExpr?: Record<string, string>
   pluginBillingExpr?: Record<string, string>
   name: string
   price?: string
@@ -167,6 +170,7 @@ export const buildModelSnapshots = ({
   billingMode,
   billingExpr,
   pluginBillingExpr = '{}',
+  endpointBillingExpr = '{}',
 }: ModelPricingSnapshotInput): ModelPricingSnapshot[] => {
   const priceMap = safeJsonParse<Record<string, number>>(modelPrice, {
     fallback: {},
@@ -223,7 +227,23 @@ export const buildModelSnapshots = ({
       [plugin]: expression,
     })
   }
+  const endpointExpressionsByModel = new Map<string, Record<string, string>>()
+  for (const [key, expression] of Object.entries(
+    safeJsonParse<Record<string, string>>(endpointBillingExpr, {
+      fallback: {},
+      context: 'endpoint billing expressions',
+    })
+  )) {
+    const parts = splitEndpointBillingExprKey(key)
+    if (!parts) continue
+    const [endpoint, model] = parts
+    endpointExpressionsByModel.set(model, {
+      ...endpointExpressionsByModel.get(model),
+      [endpoint]: expression,
+    })
+  }
   const modelNames = new Set([
+    ...endpointExpressionsByModel.keys(),
     ...pluginExpressionsByModel.keys(),
     ...Object.keys(priceMap),
     ...Object.keys(ratioMap),
@@ -255,6 +275,7 @@ export const buildModelSnapshots = ({
       return {
         name,
         pluginBillingExpr: pluginExpressionsByModel.get(name),
+        endpointBillingExpr: endpointExpressionsByModel.get(name),
         billingMode: 'tiered_expr',
         billingExpr: pureExpr,
         requestRuleExpr,
@@ -273,6 +294,7 @@ export const buildModelSnapshots = ({
     return {
       name,
       pluginBillingExpr: pluginExpressionsByModel.get(name),
+      endpointBillingExpr: endpointExpressionsByModel.get(name),
       price,
       ratio,
       cacheRatio: cache,
@@ -312,5 +334,8 @@ export const getSnapshotSignature = (snapshot?: ModelPricingSnapshot) => {
     pluginBillingExpr: Object.entries(snapshot.pluginBillingExpr ?? {}).sort(
       ([a], [b]) => a.localeCompare(b)
     ),
+    endpointBillingExpr: Object.entries(
+      snapshot.endpointBillingExpr ?? {}
+    ).sort(([a], [b]) => a.localeCompare(b)),
   })
 }

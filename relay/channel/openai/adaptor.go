@@ -109,6 +109,19 @@ func (a *Adaptor) Init(info *relaycommon.RelayInfo) {
 }
 
 func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
+	if info.RelayMode == relayconstant.RelayModeDecisions {
+		path := "/v1/decisions"
+		switch info.ChannelType {
+		case constant.ChannelTypeOpenAI:
+		case constant.ChannelTypeTypeSafe:
+			path = "/v1/systemone"
+		case constant.ChannelTypeOpenRouter:
+			path = "/alpha/decisions" // OpenRouter's default base URL includes /api.
+		default:
+			return "", errors.New("channel does not support decisions")
+		}
+		return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, path, info.ChannelType), nil
+	}
 	if info.RelayMode == relayconstant.RelayModeRealtime {
 		if after, ok := strings.CutPrefix(info.ChannelBaseUrl, "https://"); ok {
 			baseUrl := after
