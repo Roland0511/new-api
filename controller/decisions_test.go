@@ -39,6 +39,14 @@ const jevDecisionsBody = `{"model":"jev-latest","state":{"text":"blue sky","id":
 const openAIDecisionsResponse = `{"model":"gpt-6-luna","answers":[{"name":null,"type":"predicate","probability":0.9}],"usage":{"input_tokens":1000,"output_tokens":20,"total_tokens":1020,"input_tokens_details":{"cached_tokens":100,"cache_write_tokens":100},"output_tokens_details":{"reasoning_tokens":0}},"future_field":{"kept":true}}`
 const jevDecisionsResponse = `{"model":"jev-1.13.0","answers":{"blue":{"type":"noul","noul":0.9}},"usage":{"input_tokens":1000,"output_tokens":20},"future_field":{"kept":true}}`
 
+func TestDecisionsTypeSafeModelPreset(t *testing.T) {
+	adaptor := &openai.Adaptor{}
+	adaptor.Init(&relaycommon.RelayInfo{ChannelMeta: &relaycommon.ChannelMeta{ChannelType: constant.ChannelTypeTypeSafe}})
+	assert.Equal(t, []string{"jev-latest", "jev-preview", "jev-1.13.0"}, adaptor.GetModelList())
+	assert.Equal(t, "typesafe", adaptor.GetChannelName())
+	assert.Equal(t, []constant.EndpointType{constant.EndpointTypeJEVDecisions}, common.GetEndpointTypesByChannelType(constant.ChannelTypeTypeSafe, "jev-latest"))
+}
+
 func TestDecisionsNativeValidation(t *testing.T) {
 	for _, body := range []string{openAIDecisionsBody, jevDecisionsBody,
 		`{"model":"gpt-6-luna","input":[{"role":"user","content":[{"type":"input_text","text":"blue"},{"type":"input_image","image_url":"data:image/png;base64,YQ==","detail":"original"}]}],"questions":[{"type":"choice","instructions":"Choose","choices":[{"value":false},{"value":true}]}],"stream":false,"safety_identifier":null}`,

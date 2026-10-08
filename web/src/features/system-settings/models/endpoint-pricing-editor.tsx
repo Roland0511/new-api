@@ -48,6 +48,8 @@ export function EndpointPricingEditor(props: {
   modelName: string
   currency: PricingCurrency
   children: ReactNode
+  selectedEndpoint?: string
+  onSelectedEndpointChange?: (endpoint: string) => void
 }) {
   const { t } = useTranslation()
   const id = useId()
@@ -58,8 +60,11 @@ export function EndpointPricingEditor(props: {
   if (!variants.length) return props.children
   return (
     <Tabs
-      value={selected}
-      onValueChange={(value) => setSelected(String(value))}
+      value={props.selectedEndpoint ?? selected}
+      onValueChange={(value) => {
+        setSelected(String(value))
+        props.onSelectedEndpointChange?.(String(value))
+      }}
     >
       <TabsList
         aria-label={t('Endpoints')}
@@ -88,15 +93,17 @@ export function EndpointPricingEditor(props: {
         const expression = separate ? props.expressions[endpoint] : fallback
         const split = splitBillingExprAndRequestRules(expression)
         let description: string | undefined
-        if (!separate)
-          {description = expression
+        if (!separate) {
+          description = expression
             ? t('Using built-in or default pricing')
-            : t('Unset price')}
+            : t('Unset price')
+        }
         return (
           <TabsContent
             key={endpoint}
             value={endpoint}
             keepMounted
+            data-decisions-endpoint={endpoint}
             className='space-y-3'
           >
             <p className='text-muted-foreground text-sm'>

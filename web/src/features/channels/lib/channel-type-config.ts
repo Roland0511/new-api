@@ -53,7 +53,7 @@ export const CHANNEL_TYPE_CONFIGS: Record<number, ChannelTypeConfig> = {
   [CHANNEL_TYPE_TYPESAFE]: {
     id: CHANNEL_TYPE_TYPESAFE,
     name: CHANNEL_TYPES[CHANNEL_TYPE_TYPESAFE],
-    icon: 'newapi',
+    icon: 'TypeSafe',
     supportedModels: ['jev-latest', 'jev-preview', 'jev-1.13.0'],
     hints: {
       baseUrl: 'https://api.typesafe.ai',

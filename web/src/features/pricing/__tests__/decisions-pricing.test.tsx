@@ -16,10 +16,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
-import { afterEach, expect, it } from 'vitest'
+import { createRef, useState } from 'react'
+import { afterEach, expect, it, vi } from 'vitest'
 
 import {
   buildPricingChanges,
@@ -33,13 +34,21 @@ import {
   pricingRow,
 } from '@/features/model-pricing/pricing'
 import { EndpointPricingEditor } from '@/features/system-settings/models/endpoint-pricing-editor'
+import {
+  ModelPricingEditorPanel,
+  type ModelPricingEditorPanelHandle,
+} from '@/features/system-settings/models/model-pricing-sheet'
+import { api } from '@/lib/api'
 
 import { ModelPriceCell } from '../components/model-price-cell'
 import { buildDecisionsSample } from '../lib/decisions-sample'
 import { endpointPricingModel } from '../lib/endpoint-pricing'
 import type { PricingModel } from '../types'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
 
 const model: PricingModel = {
   id: 1,
@@ -107,7 +116,9 @@ it('roundtrips endpoint overrides, does not copy them to other models, and expli
     },
     ['shared', 'target']
   )
-  expect(JSON.parse(copied['billing_setting.endpoint_billing_expr'] ?? '{}')).toEqual({
+  expect(
+    JSON.parse(copied['billing_setting.endpoint_billing_expr'] ?? '{}')
+  ).toEqual({
     'openai-decisions::shared': 'p * 0.4',
     'jev-decisions::target': 'p * 0.3',
   })
@@ -168,6 +179,59 @@ it('requires an explicit endpoint price and does not turn an unknown price into 
     within(panel).getByText('Enter an endpoint price before saving.')
   ).toBeInTheDocument()
   expect(panel.querySelector('[data-billing-invalid="true"]')).not.toBeNull()
+})
+
+it('follows the selected endpoint in previews and reveals a hidden invalid endpoint when saving', async () => {
+  const user = userEvent.setup()
+  vi.spyOn(api, 'get').mockResolvedValue({
+    data: { success: true, data: [], vendors: [] },
+  })
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  const editor = createRef<ModelPricingEditorPanelHandle>()
+  render(
+    <QueryClientProvider client={client}>
+      <ModelPricingEditorPanel
+        ref={editor}
+        editData={{
+          name: 'shared',
+          billingMode: 'tiered_expr',
+          billingExpr: 'p * 99 + c * 88',
+          endpointBillingExpr: {},
+        }}
+        endpointVariants={[
+          {
+            endpoint_type: 'openai-decisions',
+            configured: '',
+            effective: 'p * 0.1 + c * 0',
+            builtin: 'p * 0.1 + c * 0',
+          },
+          { endpoint_type: 'jev-decisions', configured: '', effective: '' },
+        ]}
+      />
+    </QueryClientProvider>
+  )
+  await user.click(screen.getByRole('tab', { name: 'OpenAI Decisions' }))
+  const preview = screen.getByRole('complementary', { name: 'Preview' })
+  expect(preview.textContent).toContain('OpenAI Decisions')
+  expect(preview.textContent).not.toContain('99')
+  await user.click(screen.getByRole('tab', { name: 'JEV Decisions' }))
+  await user.click(
+    screen.getByRole('switch', { name: 'Override endpoint pricing' })
+  )
+  await user.click(screen.getByRole('tab', { name: /^Default$/ }))
+  await act(async () => {
+    expect(await editor.current?.commitDraft()).toBeNull()
+  })
+  expect(screen.getByRole('tab', { name: 'JEV Decisions' })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
+  expect(
+    screen.getByText('Enter an endpoint price before saving.')
+  ).toBeVisible()
+  client.clear()
 })
 
 it.each(['openai-decisions', 'jev-decisions'])(

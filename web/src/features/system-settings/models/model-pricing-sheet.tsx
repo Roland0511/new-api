@@ -79,9 +79,13 @@ import {
   type PricingConversionPreview,
 } from '@/features/model-pricing/pricing-conversion-dialog'
 import { PricingCurrencySelector } from '@/features/model-pricing/pricing-currency-selector'
+import { DynamicPricingBreakdown } from '@/features/pricing/components/dynamic-pricing-breakdown'
 import { usePricingData } from '@/features/pricing/hooks/use-pricing-data'
 import { combineBillingExpr } from '@/features/pricing/lib/billing-expr'
-import { isDecisionsEndpoint } from '@/features/pricing/lib/endpoint-pricing'
+import {
+  endpointLabel,
+  isDecisionsEndpoint,
+} from '@/features/pricing/lib/endpoint-pricing'
 import { pluginExpressionsEqual } from '@/features/pricing/lib/plugin-pricing'
 import {
   createDefaultTaskVisualConfig,
@@ -249,6 +253,17 @@ export const ModelPricingEditorPanel = forwardRef<
     Record<string, string>
   >({})
   const [editorReloadToken, setEditorReloadToken] = useState(0)
+  const [selectedPricingEndpoint, setSelectedPricingEndpoint] =
+    useState('__model__')
+  const selectedEndpointVariant = endpointVariants?.find(
+    (variant) => variant.endpoint_type === selectedPricingEndpoint
+  )
+  const selectedEndpointExpression =
+    endpointExpressions[selectedPricingEndpoint] ??
+    selectedEndpointVariant?.builtin ??
+    (selectedEndpointVariant?.configured
+      ? ''
+      : (selectedEndpointVariant?.effective ?? ''))
   const autoSwitchedForRef = useRef<string | null>(null)
   const isEditMode = !!editData
   const hasLegacyPricing =
@@ -362,6 +377,7 @@ export const ModelPricingEditorPanel = forwardRef<
     setConversionReason('')
     setPluginExpressions(editData?.pluginBillingExpr ?? {})
     setEndpointExpressions(editData?.endpointBillingExpr ?? {})
+    setSelectedPricingEndpoint('__model__')
     setWasConverted(false)
     setConversionPreview(null)
     const nextLaneState = createInitialLaneState(editData)
@@ -810,9 +826,19 @@ export const ModelPricingEditorPanel = forwardRef<
     ref,
     () => ({
       commitDraft: async () => {
-        if (
-          formElementRef.current?.querySelector('[data-billing-invalid="true"]')
-        ) {
+        const invalidBilling = formElementRef.current?.querySelector(
+          '[data-billing-invalid="true"]'
+        )
+        if (invalidBilling) {
+          const panel = invalidBilling.closest('[data-decisions-endpoint]')
+          const triggerId = panel?.getAttribute('aria-labelledby')
+          if (triggerId) {
+            const trigger = document.querySelector<HTMLElement>(
+              `[id="${triggerId}"]`
+            )
+            trigger?.click()
+            trigger?.focus()
+          }
           return null
         }
         const amounts =
@@ -943,6 +969,8 @@ export const ModelPricingEditorPanel = forwardRef<
                   currency={currency}
                   expressions={endpointExpressions}
                   onChange={setEndpointExpressions}
+                  selectedEndpoint={selectedPricingEndpoint}
+                  onSelectedEndpointChange={setSelectedPricingEndpoint}
                   variants={[
                     ...new Map([
                       ...(endpointVariants ?? []).map(
@@ -1221,37 +1249,59 @@ export const ModelPricingEditorPanel = forwardRef<
                 className='bg-muted/20 min-w-0 rounded-lg border @min-[960px]/pricing-editor:sticky @min-[960px]/pricing-editor:top-0'
               >
                 <div className='border-b px-3 py-2'>
-                  <div className='text-sm font-medium'>{t('Preview')}</div>
+                  <div className='text-sm font-medium'>
+                    {t('Preview')}
+                    {isDecisionsEndpoint(selectedPricingEndpoint)
+                      ? ` · ${endpointLabel(selectedPricingEndpoint)}`
+                      : ''}
+                  </div>
                 </div>
                 <div className='divide-y'>
-                  {pricingMode === 'per-token' && !effectivePreview && (
-                    <p
-                      className='text-muted-foreground px-3 py-2 text-xs'
-                      role='status'
-                    >
-                      {pricePreview.isError
-                        ? t('Failed to load model pricing')
-                        : t('Loading...')}
-                    </p>
-                  )}
-                  {(pricingMode !== 'per-token' || effectivePreview) &&
-                    previewRows.map((row) => (
-                      <div key={row.key} className='grid gap-1 px-3 py-2.5'>
-                        <span className='text-muted-foreground text-xs'>
-                          {row.label}
-                        </span>
-                        <span
-                          className={cn(
-                            'min-w-0 text-sm',
-                            row.multiline
-                              ? 'font-mono text-xs leading-5 break-words whitespace-pre-wrap'
-                              : 'truncate'
-                          )}
+                  {isDecisionsEndpoint(selectedPricingEndpoint) ? (
+                    <div className='p-3'>
+                      {selectedEndpointExpression ? (
+                        <DynamicPricingBreakdown
+                          compact
+                          billingExpr={selectedEndpointExpression}
+                        />
+                      ) : (
+                        <p className='text-muted-foreground text-xs'>
+                          {t('Unset price')}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      {pricingMode === 'per-token' && !effectivePreview && (
+                        <p
+                          className='text-muted-foreground px-3 py-2 text-xs'
+                          role='status'
                         >
-                          {row.value}
-                        </span>
-                      </div>
-                    ))}
+                          {pricePreview.isError
+                            ? t('Failed to load model pricing')
+                            : t('Loading...')}
+                        </p>
+                      )}
+                      {(pricingMode !== 'per-token' || effectivePreview) &&
+                        previewRows.map((row) => (
+                          <div key={row.key} className='grid gap-1 px-3 py-2.5'>
+                            <span className='text-muted-foreground text-xs'>
+                              {row.label}
+                            </span>
+                            <span
+                              className={cn(
+                                'min-w-0 text-sm',
+                                row.multiline
+                                  ? 'font-mono text-xs leading-5 break-words whitespace-pre-wrap'
+                                  : 'truncate'
+                              )}
+                            >
+                              {row.value}
+                            </span>
+                          </div>
+                        ))}
+                    </>
+                  )}
                 </div>
               </aside>
             </div>

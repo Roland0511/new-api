@@ -28,6 +28,10 @@ import { DynamicPricingBreakdown } from '@/features/pricing/components/dynamic-p
 import { ModelPriceCell } from '@/features/pricing/components/model-price-cell'
 import { isDynamicPricingModel } from '@/features/pricing/lib/dynamic-price'
 import {
+  endpointLabel,
+  isDecisionsEndpoint,
+} from '@/features/pricing/lib/endpoint-pricing'
+import {
   buildPreviewRows,
   createInitialLaneState,
 } from '@/features/system-settings/models/model-pricing-core'
@@ -204,11 +208,18 @@ export function ModelPricingPanel(props: {
                 />
               </div>
               {isDynamicPricingModel(effectivePricing) ? (
-                <DynamicPricingBreakdown
-                  compact
-                  billingExpr={effectivePricing.billing_expr}
-                  usageSchema={entry.usage_schema}
-                />
+                <div>
+                  {entry.endpoint_variants?.length ? (
+                    <h4 className='text-muted-foreground mb-2 text-xs'>
+                      {t('Default')}
+                    </h4>
+                  ) : null}
+                  <DynamicPricingBreakdown
+                    compact
+                    billingExpr={effectivePricing.billing_expr}
+                    usageSchema={entry.usage_schema}
+                  />
+                </div>
               ) : (
                 effectivePricing.quota_type === 0 &&
                 Number.isFinite(effectivePricing.model_ratio) && (
@@ -225,6 +236,27 @@ export function ModelPricingPanel(props: {
                   </dl>
                 )
               )}
+              {entry.endpoint_variants
+                ?.filter(
+                  (variant) =>
+                    isDecisionsEndpoint(variant.endpoint_type) &&
+                    variant.effective
+                )
+                .map((variant) => (
+                  <section key={variant.endpoint_type}>
+                    <h4 className='text-muted-foreground mb-2 text-xs'>
+                      {endpointLabel(
+                        variant.endpoint_type as
+                          | 'openai-decisions'
+                          | 'jev-decisions'
+                      )}
+                    </h4>
+                    <DynamicPricingBreakdown
+                      compact
+                      billingExpr={variant.effective}
+                    />
+                  </section>
+                ))}
             </section>
             {save.isError && (
               <div>
