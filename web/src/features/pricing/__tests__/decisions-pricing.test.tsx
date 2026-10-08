@@ -40,6 +40,7 @@ import {
 } from '@/features/system-settings/models/model-pricing-sheet'
 import { api } from '@/lib/api'
 
+import { ModelCard } from '../components/model-card'
 import { ModelPriceCell } from '../components/model-price-cell'
 import { buildDecisionsSample } from '../lib/decisions-sample'
 import { endpointPricingModel } from '../lib/endpoint-pricing'
@@ -89,6 +90,44 @@ it('renders endpoint prices independently and never inherits the base price for 
   const unset = endpointPricingModel(model, '')
   expect(Number.isNaN(unset.model_ratio)).toBe(true)
   expect(unset.billing_expr).toBeUndefined()
+})
+
+it('uses endpoint pricing in public cards instead of unrelated legacy model ratios', () => {
+  const jev = {
+    ...model,
+    model_name: 'jev-latest',
+    model_ratio: 37.5,
+    completion_ratio: 1,
+    supported_endpoint_types: ['jev-decisions'],
+    billing_endpoint_variants: [
+      {
+        endpoint_type: 'jev-decisions',
+        effective: 'tier("standard", p * 0.042 + c * 0)',
+      },
+    ],
+  }
+  render(<ModelCard model={jev} onClick={vi.fn()} />)
+  const pricing = screen.getByRole('group', { name: 'Pricing' })
+  expect(pricing.textContent).toContain('0.042')
+  expect(pricing.textContent).not.toContain('75')
+  expect(pricing.textContent).not.toContain('99')
+  expect(pricing.textContent).toContain('JEV Decisions')
+  cleanup()
+  render(
+    <ModelCard
+      model={{
+        ...jev,
+        billing_endpoint_variants: [
+          { endpoint_type: 'jev-decisions', effective: '' },
+        ],
+      }}
+      onClick={vi.fn()}
+    />
+  )
+  expect(screen.getByText('Unset price')).toBeInTheDocument()
+  expect(
+    screen.getByRole('group', { name: 'Pricing' }).textContent
+  ).not.toContain('75')
 })
 
 it('roundtrips endpoint overrides, does not copy them to other models, and explicitly clears the last override', () => {

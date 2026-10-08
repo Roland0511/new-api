@@ -36,6 +36,7 @@ import {
   getDynamicPricingSummary,
   isUnconfiguredTaskUsageModel,
 } from '../lib/dynamic-price'
+import { isDecisionsEndpoint } from '../lib/endpoint-pricing'
 import { parseTags } from '../lib/filters'
 import { isTokenBasedModel } from '../lib/model-helpers'
 import { formatPrice, formatRequestPrice } from '../lib/price'
@@ -43,6 +44,7 @@ import { taskPriceLabel, taskUsageUnitLabel } from '../lib/task-price-display'
 import type { PricingModel, PriceType, TokenUnit } from '../types'
 import { ModelBillingModeBadge } from './model-billing-mode-badge'
 import { ModelPerfBadge, type ModelPerfBadgeData } from './model-perf-badge'
+import { ModelPriceCell } from './model-price-cell'
 
 export interface ModelCardProps {
   model: PricingModel
@@ -107,7 +109,27 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
     [props.model, dynamicPriceOptions, currency]
   )
   let priceSummary: ReactNode
-  if (dynamicSummary) {
+  if (
+    props.model.billing_endpoint_variants?.some((variant) =>
+      isDecisionsEndpoint(variant.endpoint_type)
+    )
+  ) {
+    priceSummary = (
+      <div className='col-span-full min-w-0'>
+        <ModelPriceCell
+          model={props.model}
+          showExpression={false}
+          options={{
+            tokenUnit,
+            priceRate,
+            usdExchangeRate,
+            showRechargePrice,
+            selectedGroup: props.selectedGroup,
+          }}
+        />
+      </div>
+    )
+  } else if (dynamicSummary) {
     if (dynamicSummary.isSpecialExpression) {
       priceSummary = (
         <div className='col-span-full min-w-0'>
