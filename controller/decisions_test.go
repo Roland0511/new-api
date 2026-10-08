@@ -39,12 +39,10 @@ const jevDecisionsBody = `{"model":"jev-latest","state":{"text":"blue sky","id":
 const openAIDecisionsResponse = `{"model":"gpt-6-luna","answers":[{"name":null,"type":"predicate","probability":0.9}],"usage":{"input_tokens":1000,"output_tokens":20,"total_tokens":1020,"input_tokens_details":{"cached_tokens":100,"cache_write_tokens":100},"output_tokens_details":{"reasoning_tokens":0}},"future_field":{"kept":true}}`
 const jevDecisionsResponse = `{"model":"jev-1.13.0","answers":{"blue":{"type":"noul","noul":0.9}},"usage":{"input_tokens":1000,"output_tokens":20},"future_field":{"kept":true}}`
 
-func TestDecisionsTypeSafeModelPreset(t *testing.T) {
-	adaptor := &openai.Adaptor{}
-	adaptor.Init(&relaycommon.RelayInfo{ChannelMeta: &relaycommon.ChannelMeta{ChannelType: constant.ChannelTypeTypeSafe}})
-	assert.Equal(t, []string{"jev-latest", "jev-preview", "jev-1.13.0"}, adaptor.GetModelList())
-	assert.Equal(t, "typesafe", adaptor.GetChannelName())
-	assert.Equal(t, []constant.EndpointType{constant.EndpointTypeJEVDecisions}, common.GetEndpointTypesByChannelType(constant.ChannelTypeTypeSafe, "jev-latest"))
+func TestDecisionsOpenRouterEndpointAndExplicitPrice(t *testing.T) {
+	assert.Contains(t, common.GetEndpointTypesByChannelType(constant.ChannelTypeOpenRouter, "typesafe/jev-1.13"), constant.EndpointTypeJEVDecisions)
+	_, priced := billing_setting.GetEndpointBillingExpr(types.EndpointTypeJEVDecisions, "jev-latest")
+	assert.False(t, priced, "direct-provider prices must not become OpenRouter defaults")
 }
 
 func TestDecisionsNativeValidation(t *testing.T) {
@@ -113,7 +111,6 @@ func TestDecisionsTransportAndPrivacy(t *testing.T) {
 		base, expected string
 	}{
 		{constant.ChannelTypeOpenAI, "https://api.openai.com", "https://api.openai.com/v1/decisions"},
-		{constant.ChannelTypeTypeSafe, "https://api.typesafe.ai", "https://api.typesafe.ai/v1/systemone"},
 		{constant.ChannelTypeOpenRouter, "https://openrouter.ai/api", "https://openrouter.ai/api/alpha/decisions"},
 	} {
 		adaptor := &openai.Adaptor{}
@@ -220,7 +217,6 @@ func TestDecisionsRelayDatabaseMatrix(t *testing.T) {
 			}{
 				{"openai", openAIDecisionsBody, openAIDecisionsResponse, "/v1/decisions", constant.ChannelTypeOpenAI, 200, 40},
 				{"refusal", openAIDecisionsBody, strings.Replace(openAIDecisionsResponse, `"type":"predicate","probability":0.9`, `"type":"refusal"`, 1), "/v1/decisions", constant.ChannelTypeOpenAI, 200, 40},
-				{"typesafe", jevDecisionsBody, jevDecisionsResponse, "/v1/systemone", constant.ChannelTypeTypeSafe, 200, 21},
 				{"retry", openAIDecisionsBody, openAIDecisionsResponse, "/v1/decisions", constant.ChannelTypeOpenAI, 200, 40},
 				{"mapping", strings.Replace(openAIDecisionsBody, `gpt-6-luna`, `client-alias`, 1), openAIDecisionsResponse, "/v1/decisions", constant.ChannelTypeOpenAI, 200, 80},
 				{"permission", openAIDecisionsBody, openAIDecisionsResponse, "", constant.ChannelTypeOpenAI, 403, 0},
@@ -251,7 +247,7 @@ func TestDecisionsRelayDatabaseMatrix(t *testing.T) {
 						assert.Equal(t, "Bearer test-only-key", r.Header.Get("Authorization"))
 						body, err := io.ReadAll(r.Body)
 						require.NoError(t, err)
-						if tc.channel == constant.ChannelTypeTypeSafe {
+						if tc.channel == constant.ChannelTypeOpenRouter {
 							assert.Contains(t, string(body), "9007199254740993")
 						}
 						w.Header().Set("Content-Type", "application/json")

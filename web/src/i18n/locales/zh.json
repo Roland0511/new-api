@@ -4,7 +4,6 @@
     "Override endpoint pricing": "自定义此端点价格",
     "Enter an endpoint price before saving.": "请填写端点价格后再保存。",
     "Set an endpoint price to enable Decisions requests.": "设置端点价格后即可调用 Decisions。",
-    "Evaluate content with TypeSafe JEV Decisions": "通过 TypeSafe JEV Decisions 判断内容",
     "OpenAI Decisions (/v1/decisions)": "OpenAI Decisions (/v1/decisions)",
     "JEV Decisions (/v1/decisions)": "JEV Decisions (/v1/decisions)",
     "360": "360",

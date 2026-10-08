@@ -50,9 +50,6 @@ func normalizeChannelTestEndpoint(channel *model.Channel, endpointType string) s
 	if channel != nil && channel.Type == constant.ChannelTypeCodex {
 		return string(constant.EndpointTypeOpenAIResponse)
 	}
-	if channel != nil && channel.Type == constant.ChannelTypeTypeSafe {
-		return string(constant.EndpointTypeJEVDecisions)
-	}
 	return normalized
 }
 
@@ -252,7 +249,7 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 
 	info.IsChannelTest = true
 	info.InitChannelMeta(c)
-	if relayFormat == types.RelayFormatOpenAIDecisions && channel.Type != constant.ChannelTypeOpenAI || relayFormat == types.RelayFormatJEVDecisions && channel.Type != constant.ChannelTypeTypeSafe && channel.Type != constant.ChannelTypeOpenRouter {
+	if relayFormat == types.RelayFormatOpenAIDecisions && channel.Type != constant.ChannelTypeOpenAI || relayFormat == types.RelayFormatJEVDecisions && channel.Type != constant.ChannelTypeOpenRouter {
 		return testResult{localErr: errors.New("channel does not support this Decisions protocol")}
 	}
 	if relayFormat == types.RelayFormatJEVDecisions && channel.Type == constant.ChannelTypeOpenRouter {

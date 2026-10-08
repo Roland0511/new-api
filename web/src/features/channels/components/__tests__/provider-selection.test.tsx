@@ -70,6 +70,28 @@ const extensionPlugin: TaskPluginOption = {
   models: ['sora-2'],
 }
 
+test('channel creation keeps OpenAI and OpenRouter selectable without standalone TypeSafe', async () => {
+  const user = userEvent.setup()
+  const select = vi.fn()
+  render(
+    <ChannelProviderPicker
+      isCreating
+      plugins={[]}
+      canBindPlugin
+      loading={false}
+      failed={false}
+      disabled={false}
+      onRetry={vi.fn()}
+      onSelect={select}
+    />
+  )
+  expect(screen.queryByRole('option', { name: /TypeSafe/ })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('option', { name: /OpenRouter.*#20$/ }))
+  expect(select).toHaveBeenCalledWith({ kind: 'builtin', type: 20 })
+  await user.click(screen.getByRole('option', { name: /OpenAI.*#1$/ }))
+  expect(select).toHaveBeenCalledWith({ kind: 'builtin', type: 1 })
+})
+
 test('creation hides legacy Zhipu from categories and numeric search while GLM remains selectable', async () => {
   const user = userEvent.setup()
   const select = vi.fn()

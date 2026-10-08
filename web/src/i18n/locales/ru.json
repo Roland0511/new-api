@@ -4,7 +4,6 @@
     "Override endpoint pricing": "Задать тариф эндпоинта",
     "Enter an endpoint price before saving.": "Укажите тариф перед сохранением.",
     "Set an endpoint price to enable Decisions requests.": "Задайте тариф для использования Decisions.",
-    "Evaluate content with TypeSafe JEV Decisions": "Оценка содержимого с TypeSafe JEV Decisions",
     "OpenAI Decisions (/v1/decisions)": "OpenAI Decisions (/v1/decisions)",
     "JEV Decisions (/v1/decisions)": "JEV Decisions (/v1/decisions)",
     "360": "360",

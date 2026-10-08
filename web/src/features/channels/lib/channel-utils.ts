@@ -56,7 +56,6 @@ export function getChannelTypeIcon(type: number): string {
     60: 'NewAPI', // New API
     62: 'Vllm', // vLLM
     63: 'SGLang', // SGLang
-    64: 'TypeSafe', // Uses the neutral initial fallback when no vendor logo is available.
     3: 'Azure', // Azure
 
     // Anthropic

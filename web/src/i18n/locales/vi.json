@@ -4,7 +4,6 @@
     "Override endpoint pricing": "Tùy chỉnh giá điểm cuối",
     "Enter an endpoint price before saving.": "Nhập giá điểm cuối trước khi lưu.",
     "Set an endpoint price to enable Decisions requests.": "Thiết lập giá điểm cuối để sử dụng Decisions.",
-    "Evaluate content with TypeSafe JEV Decisions": "Đánh giá nội dung với TypeSafe JEV Decisions",
     "OpenAI Decisions (/v1/decisions)": "OpenAI Decisions (/v1/decisions)",
     "JEV Decisions (/v1/decisions)": "JEV Decisions (/v1/decisions)",
     "360": "360",

@@ -20,7 +20,6 @@ import {
   CHANNEL_TYPES,
   CHANNEL_TYPE_VLLM,
   CHANNEL_TYPE_SGLANG,
-  CHANNEL_TYPE_TYPESAFE,
 } from '../constants'
 
 // ============================================================================
@@ -50,16 +49,6 @@ export interface ChannelTypeConfig {
  * Configuration for each channel type
  */
 export const CHANNEL_TYPE_CONFIGS: Record<number, ChannelTypeConfig> = {
-  [CHANNEL_TYPE_TYPESAFE]: {
-    id: CHANNEL_TYPE_TYPESAFE,
-    name: CHANNEL_TYPES[CHANNEL_TYPE_TYPESAFE],
-    icon: 'TypeSafe',
-    supportedModels: ['jev-latest', 'jev-preview', 'jev-1.13.0'],
-    hints: {
-      baseUrl: 'https://api.typesafe.ai',
-      models: 'jev-latest,jev-preview,jev-1.13.0',
-    },
-  },
   [CHANNEL_TYPE_SGLANG]: {
     id: CHANNEL_TYPE_SGLANG,
     name: CHANNEL_TYPES[CHANNEL_TYPE_SGLANG],
@@ -194,15 +183,12 @@ export const CHANNEL_TYPE_CONFIGS: Record<number, ChannelTypeConfig> = {
 }
 
 /**
- * Keep native-only channel presets separate from the general model catalog.
+ * Keep OpenAI-related model suggestions separate from the general catalog.
  */
 export function getRelatedChannelModels(
   type: number,
   allModels: string[]
 ): string[] {
-  if (type === CHANNEL_TYPE_TYPESAFE) {
-    return [...(CHANNEL_TYPE_CONFIGS[type].supportedModels ?? [])]
-  }
   if (type === 1) {
     return allModels.filter(
       (model) => model.startsWith('gpt-') || model.startsWith('text-')

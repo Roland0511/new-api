@@ -97,18 +97,12 @@ func channelMatchesFilter(ch *Channel, modelName string, filter dto.ChannelFilte
 		case "openai_decisions":
 			return ch.Type == constant.ChannelTypeOpenAI
 		case "jev_decisions":
-			if ch.Type == constant.ChannelTypeTypeSafe {
-				return true
-			}
 			_, priced := billing_setting.GetConfiguredEndpointBillingExpr(types.EndpointTypeJEVDecisions, modelName)
 			return ch.Type == constant.ChannelTypeOpenRouter && priced
 		default:
 			return false
 		}
 	case dto.FilterRequestPath:
-		if ch.Type == constant.ChannelTypeTypeSafe {
-			return filter.RequestPath == "/v1/decisions"
-		}
 		if filter.RequestPath == "" {
 			return true
 		}

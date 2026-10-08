@@ -21,34 +21,16 @@ import { describe, expect, test } from 'vitest'
 import {
   CHANNEL_TYPE_OPTIONS,
   CHANNEL_TYPE_TASK_PLUGIN,
-  CHANNEL_TYPE_TYPESAFE,
   channelTypeOptionsForTaskPluginBind,
 } from '../../constants'
 import {
   CHANNEL_TYPE_CONFIGS,
   getRelatedChannelModels,
 } from '../channel-type-config'
-import { getChannelTypeIcon } from '../channel-utils'
 
-test('TypeSafe keeps its native model presets and vendor identity', () => {
-  expect(getChannelTypeIcon(CHANNEL_TYPE_TYPESAFE)).toBe('TypeSafe')
-  expect(CHANNEL_TYPE_CONFIGS[CHANNEL_TYPE_TYPESAFE].icon).toBe('TypeSafe')
-  expect(CHANNEL_TYPE_CONFIGS[CHANNEL_TYPE_TYPESAFE].supportedModels).toEqual([
-    'jev-latest',
-    'jev-preview',
-    'jev-1.13.0',
-  ])
-  expect(
-    getRelatedChannelModels(CHANNEL_TYPE_TYPESAFE, [
-      'gpt-6-luna',
-      'text-embedding-3-small',
-    ])
-  ).toEqual(['jev-latest', 'jev-preview', 'jev-1.13.0'])
-  expect(getRelatedChannelModels(CHANNEL_TYPE_TYPESAFE, [])).toEqual([
-    'jev-latest',
-    'jev-preview',
-    'jev-1.13.0',
-  ])
+test('channel choices exclude standalone TypeSafe while preserving OpenAI model filtering', () => {
+  expect(CHANNEL_TYPE_OPTIONS.some((option) => option.label === 'TypeSafe')).toBe(false)
+  expect(CHANNEL_TYPE_CONFIGS[64]).toBeUndefined()
   expect(
     getRelatedChannelModels(1, [
       'gpt-6-luna',

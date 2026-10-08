@@ -113,8 +113,6 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 		path := "/v1/decisions"
 		switch info.ChannelType {
 		case constant.ChannelTypeOpenAI:
-		case constant.ChannelTypeTypeSafe:
-			path = "/v1/systemone"
 		case constant.ChannelTypeOpenRouter:
 			path = "/alpha/decisions" // OpenRouter's default base URL includes /api.
 		default:
@@ -809,8 +807,6 @@ func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycom
 
 func (a *Adaptor) GetModelList() []string {
 	switch a.ChannelType {
-	case constant.ChannelTypeTypeSafe:
-		return []string{"jev-latest", "jev-preview", "jev-1.13.0"}
 	case constant.ChannelType360:
 		return ai360.ModelList
 	case constant.ChannelTypeLingYiWanWu:
@@ -828,8 +824,6 @@ func (a *Adaptor) GetModelList() []string {
 
 func (a *Adaptor) GetChannelName() string {
 	switch a.ChannelType {
-	case constant.ChannelTypeTypeSafe:
-		return "typesafe"
 	case constant.ChannelType360:
 		return ai360.ChannelName
 	case constant.ChannelTypeLingYiWanWu:

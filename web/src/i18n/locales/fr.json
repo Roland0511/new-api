@@ -4,7 +4,6 @@
     "Override endpoint pricing": "Personnaliser le tarif de cet endpoint",
     "Enter an endpoint price before saving.": "Saisissez un tarif avant d’enregistrer.",
     "Set an endpoint price to enable Decisions requests.": "Définissez un tarif pour activer les requêtes Decisions.",
-    "Evaluate content with TypeSafe JEV Decisions": "Évaluer le contenu avec TypeSafe JEV Decisions",
     "OpenAI Decisions (/v1/decisions)": "OpenAI Decisions (/v1/decisions)",
     "JEV Decisions (/v1/decisions)": "JEV Decisions (/v1/decisions)",
     "360": "360",

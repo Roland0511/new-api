@@ -26,10 +26,10 @@ func DecisionsHelper(c *gin.Context, info *relaycommon.RelayInfo) *types.NewAPIE
 		return types.NewError(errors.New("invalid decisions request"), types.ErrorCodeInvalidRequest, types.ErrOptionWithSkipRetry())
 	}
 	if info.RelayFormat == types.RelayFormatOpenAIDecisions && info.ChannelType != constant.ChannelTypeOpenAI ||
-		info.RelayFormat == types.RelayFormatJEVDecisions && info.ChannelType != constant.ChannelTypeTypeSafe && info.ChannelType != constant.ChannelTypeOpenRouter {
+		info.RelayFormat == types.RelayFormatJEVDecisions && info.ChannelType != constant.ChannelTypeOpenRouter {
 		return types.NewError(errors.New("channel does not support this decisions protocol"), types.ErrorCodeInvalidRequest)
 	}
-	// TypeSafe's verified built-in rates do not establish OpenRouter prices.
+	// OpenRouter Decisions requires its own verified endpoint price.
 	if info.ChannelType == constant.ChannelTypeOpenRouter {
 		if _, configured := billing_setting.GetConfiguredEndpointBillingExpr(types.EndpointTypeJEVDecisions, info.OriginModelName); !configured {
 			return types.NewError(errors.New("OpenRouter Decisions price is not configured"), types.ErrorCodeModelPriceError, types.ErrOptionWithSkipRetry())

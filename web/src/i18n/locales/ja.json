@@ -4,7 +4,6 @@
     "Override endpoint pricing": "このエンドポイントの料金を設定",
     "Enter an endpoint price before saving.": "保存する前にエンドポイントの料金を入力してください。",
     "Set an endpoint price to enable Decisions requests.": "Decisions を利用するにはエンドポイントの料金を設定してください。",
-    "Evaluate content with TypeSafe JEV Decisions": "TypeSafe JEV Decisions でコンテンツを判定",
     "OpenAI Decisions (/v1/decisions)": "OpenAI Decisions (/v1/decisions)",
     "JEV Decisions (/v1/decisions)": "JEV Decisions (/v1/decisions)",
     "360": "360",

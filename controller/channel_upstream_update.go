@@ -452,21 +452,6 @@ func fetchChannelUpstreamModelIDs(channel *model.Channel) ([]string, error) {
 	}
 
 	var result OpenAIModelsResponse
-	if channel.Type == constant.ChannelTypeTypeSafe {
-		var result struct {
-			Models []struct {
-				Name string `json:"name"`
-			} `json:"models"`
-		}
-		if err := common.Unmarshal(body, &result); err != nil {
-			return nil, err
-		}
-		ids := make([]string, 0, len(result.Models))
-		for _, item := range result.Models {
-			ids = append(ids, item.Name)
-		}
-		return normalizeModelNames(ids), nil
-	}
 	if err := common.Unmarshal(body, &result); err != nil {
 		return nil, err
 	}
