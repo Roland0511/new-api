@@ -32,6 +32,18 @@ export type UserStatus = z.infer<typeof userStatusSchema>
 export const userRoleSchema = z.number()
 export type UserRole = z.infer<typeof userRoleSchema>
 
+export const userSubscriptionStatusSchema = z.object({
+  id: z.number(),
+  plan_title: z.string(),
+  amount_total: z.number(),
+  amount_used: z.number(),
+  end_time: z.number(),
+  next_reset_time: z.number(),
+})
+export type UserSubscriptionStatus = z.infer<
+  typeof userSubscriptionStatusSchema
+>
+
 export const userSchema = z.object({
   id: z.number(),
   username: z.string(),
@@ -59,6 +71,7 @@ export const userSchema = z.object({
   last_login_at: z.number().optional(),
   DeletedAt: z.any().nullable().optional(),
   remark: z.string().optional(),
+  subscriptions: z.array(userSubscriptionStatusSchema).optional(),
   admin_permissions: z
     .record(z.string(), z.record(z.string(), z.boolean()))
     .optional(),

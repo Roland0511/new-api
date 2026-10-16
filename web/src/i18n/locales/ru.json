@@ -6783,6 +6783,14 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Subscription Status": "Статус подписки",
+    "Subscription information unavailable": "Информация о подписке недоступна",
+    "No active subscription": "Нет активной подписки",
+    "Less than a minute": "Менее минуты",
+    "{{days}} days {{hours}} hours {{minutes}} minutes": "{{days}} дн. {{hours}} ч. {{minutes}} мин.",
+    "No further resets before expiry": "Сбросов до окончания не будет",
+    "View subscription details: {{name}}": "Показать подписку: {{name}}",
+    "Time remaining": "Оставшееся время"
   }
 }

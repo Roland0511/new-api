@@ -6783,6 +6783,14 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V 4",
-    "Zoom": "ズーム"
+    "Zoom": "ズーム",
+    "Subscription Status": "サブスクリプション状況",
+    "Subscription information unavailable": "サブスクリプション情報を取得できません",
+    "No active subscription": "有効なサブスクリプションなし",
+    "Less than a minute": "1分未満",
+    "{{days}} days {{hours}} hours {{minutes}} minutes": "{{days}}日 {{hours}}時間 {{minutes}}分",
+    "No further resets before expiry": "有効期限までリセットなし",
+    "View subscription details: {{name}}": "サブスクリプション詳細を表示：{{name}}",
+    "Time remaining": "残り時間"
   }
 }

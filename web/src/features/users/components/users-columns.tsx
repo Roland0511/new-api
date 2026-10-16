@@ -45,6 +45,7 @@ import {
 import type { User } from '../types'
 import { DataTableRowActions } from './data-table-row-actions'
 import { UserQuotaCell } from './user-quota-cell'
+import { UserSubscriptionCell } from './user-subscription-cell'
 
 export function useUsersColumns(): ColumnDef<User>[] {
   const { t } = useTranslation()
@@ -193,6 +194,17 @@ export function useUsersColumns(): ColumnDef<User>[] {
         size: 180,
         minSize: 160,
         meta: { mobileOrder: 40 },
+      },
+      {
+        id: 'subscriptions',
+        header: t('Subscription Status'),
+        cell: ({ row }) => (
+          <UserSubscriptionCell subscriptions={row.original.subscriptions} />
+        ),
+        enableSorting: false,
+        size: 210,
+        minSize: 180,
+        meta: { mobileOrder: 45 },
       },
       {
         accessorKey: 'group',

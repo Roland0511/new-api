@@ -6783,6 +6783,14 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Subscription Status": "Subscription Status",
+    "Subscription information unavailable": "Subscription information unavailable",
+    "No active subscription": "No active subscription",
+    "Less than a minute": "Less than a minute",
+    "{{days}} days {{hours}} hours {{minutes}} minutes": "{{days}} days {{hours}} hours {{minutes}} minutes",
+    "No further resets before expiry": "No further resets before expiry",
+    "View subscription details: {{name}}": "View subscription details: {{name}}",
+    "Time remaining": "Time remaining"
   }
 }

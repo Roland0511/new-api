@@ -6783,6 +6783,14 @@
     "Zhipu": "智谱",
     "Zhipu GLM": "智谱GLM",
     "Zhipu V4": "智谱 V4",
-    "Zoom": "缩放"
+    "Zoom": "缩放",
+    "Subscription Status": "订阅状态",
+    "Subscription information unavailable": "订阅信息暂不可用",
+    "No active subscription": "暂无有效订阅",
+    "Less than a minute": "不足 1 分钟",
+    "{{days}} days {{hours}} hours {{minutes}} minutes": "{{days}} 天 {{hours}} 小时 {{minutes}} 分钟",
+    "No further resets before expiry": "到期前不再重置",
+    "View subscription details: {{name}}": "查看订阅详情：{{name}}",
+    "Time remaining": "剩余时间"
   }
 }

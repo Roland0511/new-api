@@ -6783,6 +6783,14 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Subscription Status": "Trạng thái đăng ký",
+    "Subscription information unavailable": "Thông tin đăng ký chưa khả dụng",
+    "No active subscription": "Không có đăng ký đang hoạt động",
+    "Less than a minute": "Dưới một phút",
+    "{{days}} days {{hours}} hours {{minutes}} minutes": "{{days}} ngày {{hours}} giờ {{minutes}} phút",
+    "No further resets before expiry": "Không đặt lại trước khi hết hạn",
+    "View subscription details: {{name}}": "Xem chi tiết đăng ký: {{name}}",
+    "Time remaining": "Thời gian còn lại"
   }
 }
