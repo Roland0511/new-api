@@ -100,6 +100,7 @@ type RelayInfo struct {
 	RelayMode              int
 	OriginModelName        string
 	ResponseModel          *ResponseModel
+	ResponseServiceTier    string
 
 	// BillingModelName is the pricing identity for this request. It is kept
 	// separate from OriginModelName and UpstreamModelName so virtual pricing
@@ -244,6 +245,7 @@ func (info *RelayInfo) RequestedImageCount() int {
 
 func (info *RelayInfo) InitChannelMeta(c *gin.Context) {
 	info.ResponseModel = nil
+	info.ResponseServiceTier = ""
 	info.FinalRequestRelayFormat = ""
 	info.RequestConversionChain = nil
 	info.InitRequestConversionChain()
@@ -1238,4 +1240,16 @@ func RemoveGeminiDisabledFields(jsonData []byte) ([]byte, error) {
 		return jsonData, nil
 	}
 	return jsonDataAfter, nil
+}
+
+// ObserveServiceTier records only upstream declarations, never a client claim.
+// Empty or unknown events cannot erase a confirmed tier on an interrupted stream.
+func (info *RelayInfo) ObserveServiceTier(tier string) {
+	if info == nil {
+		return
+	}
+	switch tier {
+	case "default", "fast", "priority", "ultrafast", "flex", "scale":
+		info.ResponseServiceTier = tier
+	}
 }

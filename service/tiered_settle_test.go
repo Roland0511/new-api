@@ -1089,3 +1089,92 @@ func TestSamePriceCacheReadsRemainInInput(t *testing.T) {
 		})
 	}
 }
+
+// Upstream facts must override the requested speed without changing param().
+func TestServiceTierSettlementUsesUpstreamFact(t *testing.T) {
+	expression := `service_tier() == "ultrafast" ? tier("ultrafast", p * 12) : (service_tier() == "fast" || service_tier() == "priority") ? tier("fast", p * 4) : tier("standard", p * 2)`
+	for _, tc := range []struct {
+		name, requested, actual, tier string
+		quota                         int
+	}{
+		{"fast accepted", "fast", "priority", "fast", 2000},
+		{"ultrafast accepted", "ultrafast", "ultrafast", "ultrafast", 6000},
+		{"fast downgraded", "fast", "default", "standard", 1000},
+		{"ultrafast downgraded", "ultrafast", "default", "standard", 1000},
+		{"project fast default", "auto", "priority", "fast", 2000},
+		{"unconfirmed speed has no premium", "ultrafast", "", "standard", 1000},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := []byte(`{"service_tier":"` + tc.requested + `"}`)
+			cost, _, err := billingexpr.RunExprWithRequest(expression, billingexpr.TokenParams{P: 1000}, billingexpr.RequestInput{Body: body})
+			require.NoError(t, err)
+			if tc.requested == "ultrafast" {
+				assert.Equal(t, float64(12000), cost)
+			}
+			info := makeRelayInfo(expression, 1, 1000, 0)
+			info.BillingRequestInput = &billingexpr.RequestInput{Body: body}
+			info.ResponseServiceTier = tc.actual
+			ok, quota, result := TryTieredSettle(info, billingexpr.TokenParams{P: 1000})
+			require.True(t, ok)
+			require.NotNil(t, result)
+			assert.Equal(t, tc.quota, quota)
+			assert.Equal(t, tc.tier, result.MatchedTier)
+			assert.Equal(t, body, info.BillingRequestInput.Body)
+		})
+	}
+}
+
+func TestPublishedGPTServiceTierPrices(t *testing.T) {
+
+	t.Run("gpt-6.1-sol", func(t *testing.T) {
+		expression := `service_tier() == "ultrafast" ? (len <= 272000 ? tier("ultrafast", p * 12 + c * 60 + cr * 0.6 + cc * 15) : tier("ultrafast_long_context", p * 24 + c * 90 + cr * 1.2 + cc * 30)) : (service_tier() == "fast" || service_tier() == "priority") ? (len <= 272000 ? tier("fast", p * 4 + c * 20 + cr * 0.2 + cc * 5) : tier("fast_long_context", p * 8 + c * 30 + cr * 0.4 + cc * 10)) : (len <= 272000 ? tier("standard", p * 2 + c * 10 + cr * 0.1 + cc * 2.5) : tier("standard_long_context", p * 4 + c * 15 + cr * 0.2 + cc * 5))`
+		for _, tc := range []struct {
+			tier       string
+			multiplier int
+		}{{"default", 1}, {"fast", 2}, {"priority", 2}, {"ultrafast", 6}} {
+			for _, long := range []bool{false, true} {
+				info := makeRelayInfo(expression, 1, 1000, 0)
+				info.ResponseServiceTier = tc.tier
+				usage := &dto.Usage{PromptTokens: 1000, CompletionTokens: 100, PromptTokensDetails: dto.InputTokenDetails{CachedTokens: 200, CacheWriteTokens: 100}}
+				want := 1335 * tc.multiplier
+				if long {
+					usage.PromptTokens = 272001
+					usage.PromptTokensDetails.CachedTokens = 200000
+					usage.PromptTokensDetails.CacheWriteTokens = 10000
+					want = 169752 * tc.multiplier
+				}
+				params := BuildTieredTokenParams(usage, false, billingexpr.UsedVars(expression))
+				ok, quota, result := TryTieredSettle(info, params)
+				require.True(t, ok)
+				require.NotNil(t, result)
+				assert.Equal(t, want, quota)
+			}
+		}
+	})
+
+	t.Run("gpt-6-astra", func(t *testing.T) {
+		expression := `service_tier() == "ultrafast" ? (len <= 272000 ? tier("ultrafast", p * 60 + c * 300 + cr * 6 + cc * 75) : tier("ultrafast_long_context", p * 120 + c * 450 + cr * 12 + cc * 150)) : (service_tier() == "fast" || service_tier() == "priority") ? (len <= 272000 ? tier("fast", p * 20 + c * 100 + cr * 2 + cc * 25) : tier("fast_long_context", p * 40 + c * 150 + cr * 4 + cc * 50)) : (len <= 272000 ? tier("standard", p * 10 + c * 50 + cr * 1 + cc * 12.5) : tier("standard_long_context", p * 20 + c * 75 + cr * 2 + cc * 25))`
+		for _, tc := range []struct {
+			tier       string
+			multiplier int
+		}{{"default", 1}, {"fast", 2}, {"priority", 2}, {"ultrafast", 6}} {
+			for _, long := range []bool{false, true} {
+				info := makeRelayInfo(expression, 1, 1000, 0)
+				info.ResponseServiceTier = tc.tier
+				usage := &dto.Usage{PromptTokens: 1000, CompletionTokens: 100, PromptTokensDetails: dto.InputTokenDetails{CachedTokens: 200, CacheWriteTokens: 100}}
+				want := 6725 * tc.multiplier
+				if long {
+					usage.PromptTokens = 272001
+					usage.PromptTokensDetails.CachedTokens = 200000
+					usage.PromptTokensDetails.CacheWriteTokens = 10000
+					want = 948760 * tc.multiplier
+				}
+				params := BuildTieredTokenParams(usage, false, billingexpr.UsedVars(expression))
+				ok, quota, result := TryTieredSettle(info, params)
+				require.True(t, ok)
+				require.NotNil(t, result)
+				assert.Equal(t, want, quota)
+			}
+		}
+	})
+}

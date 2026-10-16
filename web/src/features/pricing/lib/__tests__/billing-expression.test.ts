@@ -509,3 +509,21 @@ describe('visual billing document', () => {
     ).toBeNull()
   })
 })
+
+test('service tier simulation uses upstream facts before the requested tier', () => {
+  const source =
+    'service_tier() == "ultrafast" ? tier("ultrafast", p * 12) : tier("standard", p * 2)'
+  expect(
+    evaluateBillingExpression(source, {
+      tokens: { p: 1000 },
+      request: { body: { service_tier: 'ultrafast' } },
+    })
+  ).toMatchObject({ status: 'success', cost: 12000, matchedTier: 'ultrafast' })
+  expect(
+    evaluateBillingExpression(source, {
+      tokens: { p: 1000 },
+      serviceTier: 'default',
+      request: { body: { service_tier: 'ultrafast' } },
+    })
+  ).toMatchObject({ status: 'success', cost: 2000, matchedTier: 'standard' })
+})

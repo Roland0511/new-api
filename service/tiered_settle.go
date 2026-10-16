@@ -212,6 +212,12 @@ func TryTieredSettle(relayInfo *relaycommon.RelayInfo, params billingexpr.TokenP
 	if relayInfo.BillingRequestInput != nil {
 		requestInput = *relayInfo.BillingRequestInput
 	}
+	// Unknown upstream speed does not justify a premium. The frozen request
+	// remains available to param(), while service_tier() uses measured facts.
+	requestInput.ServiceTier = relayInfo.ResponseServiceTier
+	if requestInput.ServiceTier == "" {
+		requestInput.ServiceTier = "default"
+	}
 	if relayInfo.BillingImageCount != nil {
 		requestInput.ImageCount = relayInfo.BillingImageCount
 	} else if snap.EstimatedImageCount != nil {

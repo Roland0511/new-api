@@ -203,6 +203,7 @@ func observeStreamChoices(info *relaycommon.RelayInfo, data string, seen map[str
 	if err := common.UnmarshalJsonStr(data, &streamResponse); err != nil {
 		return
 	}
+	info.ObserveServiceTier(streamResponse.ServiceTier)
 	for _, choice := range streamResponse.Choices {
 		if choice.FinishReason != nil && *choice.FinishReason != "" {
 			if *choice.FinishReason == constant.FinishReasonContentFilter {
@@ -283,6 +284,7 @@ func OpenaiHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Respo
 	}
 
 	info.ObserveResponseModel(simpleResponse.Model)
+	info.ObserveServiceTier(simpleResponse.ServiceTier)
 	for _, choice := range simpleResponse.Choices {
 		if choice.FinishReason == constant.FinishReasonContentFilter {
 			info.PerformanceBusinessRejection = true

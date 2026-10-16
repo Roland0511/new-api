@@ -178,6 +178,21 @@ OpenAI 已于 2026-05-12 下线 DALL·E 2/3；其校验、默认值和倍率保�
 | `ceil` | `ceil(x) → float64` | Ceiling |
 | `floor` | `floor(x) → float64` | Floor |
 
+### Upstream Service Tier
+
+`service_tier()` returns the client-requested tier during reservation and the
+upstream-reported tier during settlement. It is separate from frozen `param()`
+request values. `priority` and `fast` are provider aliases; expressions choose
+which prices apply. Responses HTTP/SSE/WebSocket and OpenAI Chat HTTP/SSE capture
+upstream facts before protocol conversion. Retries clear the previous attempt's
+fact. Missing or unknown upstream declarations settle as `default`, so an
+unconfirmed speed never incurs a premium. An observed tier is retained on an
+interrupted stream. Admin consume logs record `upstream_service_tier`.
+
+For example: `service_tier() == "ultrafast" ? tier("ultrafast", p * 12 + c * 60) : tier("standard", p * 2 + c * 10)`.
+Frontend simulations accept an optional `serviceTier` fact and otherwise use the
+requested `service_tier`. Existing expressions and `param()` remain unchanged.
+
 ### Expression Examples
 
 ```

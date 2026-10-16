@@ -2,6 +2,7 @@ package openai
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -353,4 +354,41 @@ func TestOaiResponsesStreamHandlerKeepsNonSGLangCreatedAt(t *testing.T) {
 	_, apiErr := OaiResponsesStreamHandler(c, info, resp)
 	require.Nil(t, apiErr)
 	assert.Contains(t, w.Body.String(), `1786588600.0`)
+}
+
+func TestResponsesServiceTierFactsSurviveHTTPAndSSE(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	oldTimeout := constant.StreamingTimeout
+	constant.StreamingTimeout = 30
+	t.Cleanup(func() { constant.StreamingTimeout = oldTimeout })
+	for _, stream := range []bool{false, true} {
+		t.Run(fmt.Sprint(stream), func(t *testing.T) {
+			payload := `{"id":"resp_speed","object":"response","model":"gpt-6.1-sol","status":"completed","service_tier":"ultrafast","output":[],"usage":{"input_tokens":11,"output_tokens":5,"total_tokens":16}}`
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+			info := &relaycommon.RelayInfo{OriginModelName: "gpt-6.1-sol", DisablePing: true, ChannelMeta: &relaycommon.ChannelMeta{UpstreamModelName: "gpt-6.1-sol"}}
+			body := payload
+			contentType := "application/json"
+			if stream {
+				body = "data: {\"type\":\"response.completed\",\"response\":" + payload + "}\n\ndata: [DONE]\n\n"
+				contentType = "text/event-stream"
+			}
+			resp := &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body)), Header: http.Header{"Content-Type": []string{contentType}}}
+			if stream {
+				_, err := OaiResponsesStreamHandler(c, info, resp)
+				require.Nil(t, err)
+			} else {
+				_, err := OaiResponsesHandler(c, info, resp)
+				require.Nil(t, err)
+			}
+			assert.Equal(t, "ultrafast", info.ResponseServiceTier)
+			assert.Contains(t, w.Body.String(), `"service_tier":"ultrafast"`)
+			// Empty events cannot erase a fact; the next channel attempt must clear it.
+			info.ObserveServiceTier("")
+			assert.Equal(t, "ultrafast", info.ResponseServiceTier)
+			info.InitChannelMeta(c)
+			assert.Empty(t, info.ResponseServiceTier)
+		})
+	}
 }

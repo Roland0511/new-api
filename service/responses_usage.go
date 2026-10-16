@@ -34,6 +34,7 @@ func (a *ResponsesUsageAccumulator) Observe(event *dto.ResponsesStreamResponse) 
 	}
 	if event.Response != nil {
 		a.info.ObserveResponseModel(event.Response.Model)
+		a.info.ObserveServiceTier(event.Response.ServiceTier)
 	}
 	a.started = true
 	ObserveResponsesOutcome(a.info, event)

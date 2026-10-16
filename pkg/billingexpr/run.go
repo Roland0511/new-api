@@ -68,6 +68,16 @@ func runProgram(prog *vm.Program, requestRules []RequestRuleTrace, usedVars map[
 	}
 
 	env := map[string]any{
+		"service_tier": func() string {
+			if request.ServiceTier != "" {
+				return request.ServiceTier
+			}
+			tier := gjson.GetBytes(request.Body, "service_tier").String()
+			if tier == "" {
+				return "default"
+			}
+			return tier
+		},
 		"image_count": float64(imageCount),
 		"p":           params.P,
 		"c":           params.C,

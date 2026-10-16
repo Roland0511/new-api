@@ -41,6 +41,7 @@ export const TIME_FUNCTIONS = [
 ] as const
 export type TimeFunction = (typeof TIME_FUNCTIONS)[number]
 export const BILLING_FUNCTIONS: Readonly<Record<string, number>> = {
+  service_tier: 0,
   tier: 2,
   fixed: 1,
   param: 1,
@@ -125,6 +126,7 @@ export type ExpressionFailure = {
 }
 export type CompilationResult = CompiledBillingExpression | ExpressionFailure
 export type BillingSimulationContext = {
+  serviceTier?: string
   imageCount?: number
   /** Already normalized billable counts; no implicit cache subtraction. */
   tokens?: Partial<Record<TokenVariable, number>>

@@ -422,6 +422,13 @@ class BillingRuntime {
   private call(node: Extract<ExpressionNode, { kind: 'call' }>): RuntimeValue {
     const args = node.args
     switch (node.name) {
+      case 'service_tier': {
+        if (this.context.serviceTier !== undefined) {
+          return { value: this.context.serviceTier }
+        }
+        const tier = readRequestPath(this.context.request?.body, 'service_tier')
+        return { value: typeof tier === 'string' && tier ? tier : 'default' }
+      }
       case 'fixed': {
         const amount = this.numeric(args[0]).value
         this.billingUnit = 'request'

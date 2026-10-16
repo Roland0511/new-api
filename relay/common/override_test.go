@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	common2 "github.com/QuantumNous/new-api/common"
@@ -2522,4 +2523,30 @@ func TestReasoningEffortOverrideIsAuditedWithoutDebugMode(t *testing.T) {
 	_, err := ApplyParamOverrideWithRelayInfo([]byte(`{"reasoning":{"effort":"high"}}`), info)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"set reasoning.effort = max"}, info.ParamOverrideAudit)
+}
+
+func TestAzureSpeedRolloutScope(t *testing.T) {
+	overrideJSON := `{"operations": [{"path": "service_tier", "mode": "delete", "logic": "AND", "conditions": [{"path": "model", "mode": "full", "value": "gpt-6.1-sol", "invert": true}, {"path": "model", "mode": "full", "value": "gpt-6-astra", "invert": true}]}, {"mode": "return_error", "logic": "AND", "value": {"message": "Supported service_tier values: auto, default, fast, priority, ultrafast", "status_code": 400, "code": "unsupported_service_tier", "type": "invalid_request_error", "skip_retry": true}, "conditions": [{"path": "service_tier", "mode": "full", "value": "auto", "invert": true}, {"path": "service_tier", "mode": "full", "value": "default", "invert": true}, {"path": "service_tier", "mode": "full", "value": "fast", "invert": true}, {"path": "service_tier", "mode": "full", "value": "priority", "invert": true}, {"path": "service_tier", "mode": "full", "value": "ultrafast", "invert": true}]}]}`
+	var override map[string]any
+	require.NoError(t, common2.Unmarshal([]byte(overrideJSON), &override))
+	for _, tc := range []struct {
+		model, tier    string
+		keep, rejected bool
+	}{
+		{"gpt-6.1-sol", "fast", true, false}, {"gpt-6-astra", "ultrafast", true, false},
+		{"gpt-6-astra", "priority", true, false}, {"gpt-6-sol", "fast", false, false},
+		{"gpt-6.1-sol", "flex", false, true}, {"gpt-6.1-sol", "bogus", false, true},
+	} {
+		body := []byte(fmt.Sprintf(`{"model":%q,"service_tier":%q}`, tc.model, tc.tier))
+		out, err := ApplyParamOverride(body, override, nil)
+		if tc.rejected {
+			require.Error(t, err)
+			continue
+		}
+		require.NoError(t, err)
+		assert.Equal(t, tc.keep, strings.Contains(string(out), `"service_tier"`))
+	}
+	out, err := ApplyParamOverride([]byte(`{"model":"gpt-6.1-sol"}`), override, nil)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"model":"gpt-6.1-sol"}`, string(out))
 }

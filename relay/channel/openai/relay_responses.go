@@ -37,6 +37,7 @@ func OaiResponsesHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http
 	}
 
 	info.ObserveResponseModel(responsesResponse.Model)
+	info.ObserveServiceTier(responsesResponse.ServiceTier)
 	responseBody = rewriteSGLangResponsesCreatedAt(info, responseBody, "created_at", responsesResponse.CreatedAt)
 
 	// 写入新的 response body
