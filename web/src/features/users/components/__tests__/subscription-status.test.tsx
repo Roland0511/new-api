@@ -145,15 +145,13 @@ it('refreshes expiry while the list remains open', () => {
 
 it('updates Chinese labels and uses the configured currency', async () => {
   await i18n.changeLanguage('zhCN')
-  useSystemConfigStore
-    .getState()
-    .setConfig({
-      currency: {
-        ...DEFAULT_CURRENCY_CONFIG,
-        quotaDisplayType: 'CNY',
-        usdExchangeRate: 7,
-      },
-    })
+  useSystemConfigStore.getState().setConfig({
+    currency: {
+      ...DEFAULT_CURRENCY_CONFIG,
+      quotaDisplayType: 'CNY',
+      usdExchangeRate: 7,
+    },
+  })
   show([subscription])
   expect(screen.getByText('¥35 / ¥140')).toBeInTheDocument()
   await userEvent
